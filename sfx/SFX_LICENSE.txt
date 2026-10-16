@@ -1,0 +1,15 @@
+Source: Mixkit (mixkit.co), downloaded 2026-10-16
+License: Mixkit Sound Effects Free License (https://mixkit.co/license/#sfxFree)
+
+Allowed: YouTube videos, social media posts, commercial projects. No attribution required.
+Not allowed: redistributing these files on their own, as stock, in a tool or template, or with source files.
+
+So: these WAVs stay local. If reel-editor ever goes on GitHub, keep sfx/*.wav out of the repo (gitignore).
+
+Files (Mixkit ID in the name):
+whoosh_fast_1490.wav        Fast whoosh transition
+whoosh_cinematic_1492.wav   Cinematic whoosh fast transition
+whoosh_air_1489.wav         Air woosh
+pop_light_3005.wav          Explainer video pops whoosh light pop
+pop_hard_click_2364.wav     Hard pop click
+pop_dry_2356.wav            Dry pop up notification alert

@@ -1,0 +1,9 @@
+# machine-specific
+config.json
+# his videos and Flow clips stay off any repo
+reels/
+# Mixkit licence: no redistribution in a tool
+sfx/*.wav
+__pycache__/
+# fetched by setup.ps1 (OFL fonts, pinned Fontsource 5.3.0)
+fonts/**/*.ttf
