@@ -5,8 +5,8 @@ description: "Aarit's talking-head Reel engine. Use whenever Aarit sends or poin
 
 # Reel edit (Aarit's locked style)
 
-Engine folder: `C:\Users\Aaru\Documents\reel-editor` on the laptop (on the PC, find the `reel-editor`
-folder that has `reel.py`). Read `STYLE.md` and `TEXT_CUTS.md` there before the first run in a session.
+Engine folder: `C:\Users\Aaru\Documents\reel-editor` on the laptop, `D:\My Data\Documents\cc\reel-editor`
+on the PC (see `PC_SETUP.md`). Run `git pull` in it first so both machines use the same engine. Read `STYLE.md` and `TEXT_CUTS.md` there before the first run in a session.
 Run Python with `py -3.14` (system Python has Pillow and numpy; transcription uses the venv set in
 `config.json`). Never change the locked look unless he asks for a change.
 
