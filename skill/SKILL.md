@@ -19,6 +19,9 @@ This transcribes the video and finds his cards and split screens. If he talks ab
 that segment for the money burn. It picks 2-3 text cuts, writes `reels/<name>/flow prompts.txt`, saves
 3 cover frames (`covers/cover_1..3.png`) and renders `<name> preview.mp4`.
 
+**Flow moments are ALWAYS a mix of typography, B-roll and visuals** (his rule, see the top of TEXT_CUTS.md).
+Prep only picks the typography, so add the B-roll and visuals yourself before giving him the prompts.
+
 Then **review the picks yourself** (the TEXT_CUTS.md rules):
 - Numbers first, spread out, the words must be what he actually says.
 - Skip anything the screen already shows.

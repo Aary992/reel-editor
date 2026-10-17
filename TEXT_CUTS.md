@@ -5,6 +5,28 @@ Aarit's talking-head Reels get **2 to 3 After Effects-style motion-graphic text 
 as he is saying those words**, never longer. The Flow clip is generated per Reel from the prompts that
 `moments.py` writes. These are not random visuals: every cut shows the words he is saying at that moment.
 
+## UPDATE 10-17, his rule: Flow moments are a MIX, never typography only
+
+He said it plainly: "a mix of typography and b rolls and visuals". Every Reel's Flow plan has all three kinds,
+about one moment every 7 to 8 s, alternating kinds, at least ~2 s apart:
+
+- **TYPOGRAPHY** (`T1.mp4`...): the red-card number cuts below. Numbers only ("₹1 CRORE", "DAY 2").
+  Full-screen, captions step aside, a pop on each. Lasts the spoken words.
+- **B-ROLL** (`B1.mp4`...): Flow text-to-video, a cinematic shot of the concrete image or metaphor in the line
+  ("it was just an idea in my head" -> a pencil app sketch that glows into a real screen). Goes on his weakest
+  footage (empty rooms, filler), never on his best face moment. Captions KEEP RUNNING over it. A whoosh on the
+  way in unless another sound is within 1.2 s. In `cuts.json` with `"kind": "broll", "from": 0.3, "speed": 1.0`.
+  Prompt: vertical 9:16, 35mm shallow depth of field, warm natural vlog colour, action starts in the first
+  second and is done within 2 s, no faces, no text or logos.
+- **VISUAL** (`V1.mp4`...): an Omni in-scene edit of HIS OWN shot (mood shift, light, weather, particles) on a
+  line with feeling. He uploads the exact shot (shot-boundary to shot-boundary, max 9 s), exported to
+  `Downloads\<name> flow uploads\`. In `edits.json` with `"segment"`. Only on shots where he is not talking to
+  camera, or check lip sync. Prompt carries the "keep the person exactly as he is" block.
+
+moments.py still auto-picks typography only: Claude adds the B-roll and visuals by hand from the transcript
+and shot frames, writes ONE prompts file in play order, and renders with `lab/lab_render.py --look v2`, which
+lays in all three kinds. First done on recording 55 (3 typography, 3 B-roll, 2 visuals in 55 s).
+
 ## Per Reel
 
 1. `python transcribe.py ...` and `python sections.py ...` into `reels/<name>/`
