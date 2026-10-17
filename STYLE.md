@@ -20,7 +20,9 @@ He signed this look off on "hedge 1 final". Don't change any of it unless he ask
   (it darkens skin).
 
 ## Text cuts (see TEXT_CUTS.md)
-- 2 to 3 per Reel (2 for about 30 s, 3 for about 45 s), numbers first, at least 8 s apart.
+- OPTIONAL per video (his rule 10-18): ask him every time whether he wants motion graphic text.
+  `reel.py prep --text-cuts yes|no`; with no, the Reel has none.
+- When yes: 2 to 3 per Reel (2 for about 30 s, 3 for about 45 s), numbers first, at least 8 s apart.
 - One style only, the "17 TRADES" look: odometer count-up, word slides in, red card palette (#EDEBEC / #D43D29).
 - Each cut lasts exactly the spoken words. The clip is auto-timed to land at 85% and sped up only, never
   slowed down. Nearest-frame retiming (no minterpolate mci, which tears letters).
@@ -49,7 +51,7 @@ He signed this look off on "hedge 1 final". Don't change any of it unless he ask
 - A persistent "POV" title.
 - Code-drawn icons or pop-in visuals.
 - Hard punch-in zooms.
-- External B-roll cutaways.
+- External B-roll cutaways (tried again 10-17 with Flow B-roll; he dropped it for good 10-18).
 - Money "orbit", "rain" or "golden" variations.
 - Slam, typewriter, bubble, pulse or glitch text animations.
 - Big uppercase captions with a yellow highlight.

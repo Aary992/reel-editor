@@ -5,27 +5,18 @@ Aarit's talking-head Reels get **2 to 3 After Effects-style motion-graphic text 
 as he is saying those words**, never longer. The Flow clip is generated per Reel from the prompts that
 `moments.py` writes. These are not random visuals: every cut shows the words he is saying at that moment.
 
-## UPDATE 10-17, his rule: Flow moments are a MIX, never typography only
+## UPDATE 10-18, his rule: motion graphic text is OPTIONAL, and NO B-roll
 
-He said it plainly: "a mix of typography and b rolls and visuals". Every Reel's Flow plan has all three kinds,
-about one moment every 7 to 8 s, alternating kinds, at least ~2 s apart:
-
-- **TYPOGRAPHY** (`T1.mp4`...): the red-card number cuts below. Numbers only ("₹1 CRORE", "DAY 2").
-  Full-screen, captions step aside, a pop on each. Lasts the spoken words.
-- **B-ROLL** (`B1.mp4`...): Flow text-to-video, a cinematic shot of the concrete image or metaphor in the line
-  ("it was just an idea in my head" -> a pencil app sketch that glows into a real screen). Goes on his weakest
-  footage (empty rooms, filler), never on his best face moment. Captions KEEP RUNNING over it. A whoosh on the
-  way in unless another sound is within 1.2 s. In `cuts.json` with `"kind": "broll", "from": 0.3, "speed": 1.0`.
-  Prompt: vertical 9:16, 35mm shallow depth of field, warm natural vlog colour, action starts in the first
-  second and is done within 2 s, no faces, no text or logos.
-- **VISUAL** (`V1.mp4`...): an Omni in-scene edit of HIS OWN shot (mood shift, light, weather, particles) on a
-  line with feeling. He uploads the exact shot (shot-boundary to shot-boundary, max 9 s), exported to
-  `Downloads\<name> flow uploads\`. In `edits.json` with `"segment"`. Only on shots where he is not talking to
-  camera, or check lip sync. Prompt carries the "keep the person exactly as he is" block.
-
-moments.py still auto-picks typography only: Claude adds the B-roll and visuals by hand from the transcript
-and shot frames, writes ONE prompts file in play order, and renders with `lab/lab_render.py --look v2`, which
-lays in all three kinds. First done on recording 55 (3 typography, 3 B-roll, 2 visuals in 55 s).
+- **Ask him every time** he wants a video edited: "Do you want motion graphic text in this video?"
+  `reel.py prep` needs `--text-cuts yes|no` and refuses to run without it; the answer is kept in
+  `reels/<name>/options.json`. With `no`, cuts.json is empty and nothing below applies.
+- **No B-roll, ever.** The 10-17 "mix" (typography + Flow B-roll + visuals) is withdrawn: he tried it on
+  recording 55 and dropped the B-roll. The lab renderer skips any B-roll entry it still finds.
+- **In-scene visuals stay** (`V1.mp4`...): an Omni edit of HIS OWN shot (mood, light, weather, particles) on
+  a line with feeling. He uploads the exact shot, cut on the real shot boundaries (max 9 s), from the one
+  Flow folder in Downloads. In `edits.json` with `"segment"` (and `"on"` if the upload starts before the
+  real cut). Use shots where he is not talking to camera, or check lip sync. Check every result: Flow has
+  drifted the timing of an upload before (recording 55 V1, 0.68 s), and that clip must be redone.
 
 ## Per Reel
 

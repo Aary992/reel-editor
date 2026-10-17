@@ -10,19 +10,23 @@ on the PC (see `PC_SETUP.md`). Run `git pull` in it first so both machines use t
 Run Python with `py -3.14` (system Python has Pillow and numpy; transcription uses the venv set in
 `config.json`). Never change the locked look unless he asks for a change.
 
-## 1. He sends a video → prep
+## 1. He sends a video → ASK FIRST, then prep
+
+**Before anything else, ask him: "Do you want motion graphic text in this video?"** (yes or no). Never
+assume, never carry the answer over from the last video. Prep refuses to run without it.
 
 ```
-py -3.14 reel.py prep "<video path>" [--name "<short name>"]
+py -3.14 reel.py prep "<video path>" --text-cuts yes|no [--name "<short name>"]
 ```
 This transcribes the video and finds his cards and split screens. If he talks about losing money, it cuts
-that segment for the money burn. It picks 2-3 text cuts, writes `reels/<name>/flow prompts.txt`, saves
-3 cover frames (`covers/cover_1..3.png`) and renders `<name> preview.mp4`.
+that segment for the money burn. With `yes` it picks 2-3 motion graphic text moments; with `no` there are
+none. It writes `reels/<name>/flow prompts.txt`, saves 3 cover frames (`covers/cover_1..3.png`) and renders
+`<name> preview.mp4`.
 
-**Flow moments are ALWAYS a mix of typography, B-roll and visuals** (his rule, see the top of TEXT_CUTS.md).
-Prep only picks the typography, so add the B-roll and visuals yourself before giving him the prompts.
+**No B-roll, ever** (his call 10-18). Flow is only for the motion graphic text (when he said yes) and the
+in-scene visuals (Omni edits of his own shot, see TEXT_CUTS.md).
 
-Then **review the picks yourself** (the TEXT_CUTS.md rules):
+If he said yes, **review the picks yourself** (the TEXT_CUTS.md rules):
 - Numbers first, spread out, the words must be what he actually says.
 - Skip anything the screen already shows.
 - Re-pick with `py -3.14 reel.py repick "<name>" --only "TEXT|TEXT"` when you know better.

@@ -1,8 +1,10 @@
 """Aarit's talking-head Reel engine: one video in, his locked style out.
 
-  python reel.py prep "C:\\path\\to\\video.mp4" [--name NAME]
-      transcribe, sections, money-burn segment (if he talks about losing money), 2-3 text-cut picks,
-      one "flow prompts.txt", 3 cover frames and a preview render. No input needed from him.
+  python reel.py prep "C:\\path\\to\\video.mp4" --text-cuts yes|no [--name NAME]
+      transcribe, sections, money-burn segment (if he talks about losing money), 2-3 motion graphic text
+      picks (only with --text-cuts yes), one "flow prompts.txt", 3 cover frames and a preview render.
+      --text-cuts is required: ASK HIM every time whether he wants motion graphic text in this video.
+      No B-roll, ever (his call 10-18).
   python reel.py repick NAME --only "DAY 1|17 TRADES"     (Claude's review override)
   python reel.py map NAME "his clip name.mp4" "17 TRADES" (when his file names don't match)
   python reel.py split NAME
@@ -144,6 +146,10 @@ def write_flow_prompts(reel):
     import moments
     cuts = json.loads((reel / "cuts.json").read_text(encoding="utf-8"))
     edits = json.loads((reel / "edits.json").read_text()) if (reel / "edits.json").exists() else []
+    if not cuts and not edits:
+        (reel / "flow prompts.txt").write_text(f"FLOW PROMPTS FOR \"{reel.name}\"\n\nNothing to make in Flow for this "
+                                               "video: no motion graphic text and no money-burn line.\n", encoding="utf-8")
+        return
     out = [f"FLOW PROMPTS FOR \"{reel.name}\"\n\n",
            "Generate each one in Google Flow, then save the result into THIS folder with the exact file name shown.\n",
            "Check the spelling on text clips and the lip sync on the money clip. Then tell Claude \"Flow clips are in\".\n",
@@ -186,12 +192,18 @@ def cmd_prep(a, cfg):
     else:
         (reel / "edits.json").write_text("[]")
         print("    no loss line, no money burn this time")
-    print("[4/6] picking text-cut moments")
-    cmd = [cfg["python"], ROOT / "moments.py", "--reel", reel]
-    if a.only:
-        cmd += ["--only", a.only]
-    out = run(cmd, quiet=True)
-    print("\n".join("    " + ln.strip() for ln in out.splitlines() if "PICK" in ln))
+    # motion graphic text is optional per video: he is asked every time, and the answer is kept with the reel
+    (reel / "options.json").write_text(json.dumps({"text_cuts": a.text_cuts}))
+    if a.text_cuts == "yes":
+        print("[4/6] picking motion graphic text moments")
+        cmd = [cfg["python"], ROOT / "moments.py", "--reel", reel]
+        if a.only:
+            cmd += ["--only", a.only]
+        out = run(cmd, quiet=True)
+        print("\n".join("    " + ln.strip() for ln in out.splitlines() if "PICK" in ln))
+    else:
+        (reel / "cuts.json").write_text("[]")
+        print("[4/6] no motion graphic text in this video (his choice)")
     write_flow_prompts(reel)
     folder, n = split_for_flow(cfg, src, name)
     print(f"    {n} Flow part(s) of max {FLOW_MAX:.0f} s in {folder}")
@@ -205,6 +217,9 @@ def cmd_prep(a, cfg):
 
 def cmd_repick(a, cfg):
     reel = REELS / a.name
+    opts = reel / "options.json"
+    if opts.exists() and json.loads(opts.read_text()).get("text_cuts") == "no":
+        sys.exit("he said no motion graphic text for this video; re-run prep with --text-cuts yes if he changes his mind")
     run([cfg["python"], ROOT / "moments.py", "--reel", reel, "--only", a.only])
     write_flow_prompts(reel)
 
@@ -307,6 +322,8 @@ def main():
     sub = ap.add_subparsers(dest="cmd", required=True)
     p = sub.add_parser("prep")
     p.add_argument("video")
+    p.add_argument("--text-cuts", required=True, choices=["yes", "no"],
+                   help="motion graphic text in this video? ASK HIM every time, never assume")
     p.add_argument("--name")
     p.add_argument("--only", default="")
     p = sub.add_parser("repick")

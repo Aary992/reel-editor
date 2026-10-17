@@ -1,7 +1,8 @@
 """Style lab: render one Reel in an alternative look, to compare against the locked style.
 
 Nothing here changes the locked engine (reel.py / talk_reel.py). Captions, transitions, grading,
-framed B-roll and the code-made text cuts are all drawn per frame in Python, then encoded once.
+the keynote card frame and the code-made text cuts are all drawn per frame in Python, then encoded once.
+No B-roll cutaways (his call 10-18); Flow motion graphic text only when he said yes for that video.
 
   py -3.14 lab/lab_render.py --reel "reels/recording 55" --look glass --out "out.mp4"
 """
@@ -64,7 +65,8 @@ LOOKS = {
         transition="zoom", span=0.14, grade=None, grain=0, frame=None, textcut="redcard",
         whoosh="all", whoosh_db=-16),
     # 6. "v2", his pick 10-17: glass captions in bold, key words in a new colour each time, a light-leak
-    #    glow on every cut (colour changes per video), glass picture, +20% accent SFX, face zoom, Flow cuts
+    #    glow on every cut (colour changes per video), glass picture, +20% accent SFX, face zoom, his Flow
+    #    motion graphic text (only if he said yes for this video) and Omni in-scene visuals. No B-roll.
     "v2": dict(
         font=(SEG, "Bold Display", 76), color=(255, 255, 255), emph_color="rotate", emph_font=None,
         case="sentence", reveal="word", anim=dict(dur=0.26, rise=16, blur=9, scale0=0.97, back=False),
@@ -626,26 +628,41 @@ def plan_accents(words, taken, n, hidden, min_gap=2.5):
     return chosen
 
 
-# ---------------------------------------------------------------- B-roll
+# ---------------------------------------------------------------- exact cuts and in-scene edits
 
 
-def broll_reader(ff, c, fps):
-    """Frame source for one B-roll cutaway: the clip from `from`, at `speed`, cover-cropped to 9:16 at the
-    Reel's frame rate. Returns a function that hands back the next frame (or the last one if it runs out)."""
-    dur = (c["end"] - c["t"]) * c.get("speed", 1.0) + 0.5
-    p = subprocess.Popen([ff, "-v", "error", "-ss", str(c.get("from", 0.0)), "-t", f"{dur:.3f}", "-i", str(c["path"]),
-                          "-vf", f"setpts=PTS/{c.get('speed', 1.0)},fps={fps},scale={W}:{H}:force_original_aspect_ratio="
-                          f"increase:flags=lanczos,crop={W}:{H},setsar=1,format=rgb24",
-                          "-f", "rawvideo", "-pix_fmt", "rgb24", "-"], stdout=subprocess.PIPE)
-    last = [None]
+def refine_cuts(ff, video, rough, fps_f):
+    """ffmpeg's scene score fires up to 0.3 s early on his edits (it catches the motion just before a cut).
+    Snap each rough cut to the frame where the picture actually changes most; drop ones with no real change."""
+    b = subprocess.run([ff, "-v", "error", "-i", video, "-vf", "scale=54:96", "-f", "rawvideo", "-pix_fmt", "gray",
+                        "-"], capture_output=True, check=True).stdout
+    f = np.frombuffer(b, np.uint8).reshape(-1, 96, 54).astype(np.float32)
+    d = np.abs(np.diff(f, axis=0)).mean((1, 2))
+    med = float(np.median(d))
+    out = []
+    for c in rough:
+        i0 = int(round(c * fps_f))
+        win = range(max(0, i0 - 3), min(len(d), i0 + int(0.6 * fps_f)))
+        j = max(win, key=lambda k: d[k])
+        if d[j] > 8 * med:                      # a real hard cut, not a camera move
+            out.append(round((j + 1) / fps_f, 3))
+    return out
 
-    def nxt(fallback):
-        buf = p.stdout.read(W * H * 3)
-        if len(buf) == W * H * 3:
-            last[0] = Image.frombytes("RGB", (W, H), buf)
-        return last[0] if last[0] is not None else fallback
-    nxt.proc = p
-    return nxt
+
+def edit_filters(edits, fps_str):
+    """Like fx.edit_filters, but each edit can start showing at `on` (the real shot cut inside the uploaded
+    segment), so the few frames of the previous shot that Flow also re-drew are never used."""
+    fc = f"[0:v]scale={W}:{H}:flags=lanczos,setsar=1,format=yuv420p[e0]"
+    args, last = ["-i", None], "e0"
+    for k, e in enumerate(edits, 1):
+        stretch = e["dur"] / e["clip_dur"]
+        args += ["-i", str(e["path"])]
+        fc += (f";[{k}:v]setpts=(PTS-STARTPTS)*{stretch:.5f}+{e['t']}/TB,fps={fps_str},"
+               f"scale={W}:{H}:force_original_aspect_ratio=increase:flags=lanczos,crop={W}:{H},setsar=1,"
+               f"format=yuv420p[c{k}];[{last}][c{k}]overlay=0:0:eof_action=pass:"
+               f"enable='gte(t,{e.get('on', e['t'])})*lt(t,{e['end']})'[e{k}]")
+        last = f"e{k}"
+    return args, fc, last
 
 
 # ---------------------------------------------------------------- main
@@ -673,10 +690,12 @@ def main():
     wins = caption_windows(tr.chunk(words), L)
     sections = tr.load_sections(reel / "sections.json")
     from cuts import find_cuts
-    scene = [float(x) for x in a.cuts_at.split(",")] if a.cuts_at else find_cuts(ff, video)
+    rough = [float(x) for x in a.cuts_at.split(",")] if a.cuts_at else find_cuts(ff, video, threshold=0.15)
     fps = tr.probe(ff, video, "v:0", "r_frame_rate")
     num, den = (fps.split("/") + ["1"])[:2]
     fps_f = float(num) / float(den)
+    scene = refine_cuts(ff, video, rough, fps_f)
+    print("  cuts:", ", ".join(f"{c:.2f}" for c in scene))
     dur = float(tr.probe(ff, video, "v:0", "duration"))
     shots = list(zip([0.0] + scene, scene + [dur + 1]))
 
@@ -684,14 +703,16 @@ def main():
     if L["textcut"]:
         for c in json.loads((reel / "cuts.json").read_text(encoding="utf-8")):
             tcuts.append({**c, "end": max(c["end"], c["t"] + 0.8)})   # a code card needs ~0.8 s to read
-    # his Flow clips: typography cards are laid over everything by ffmpeg (auto-timed to the spoken words,
-    # captions step aside); B-roll is laid in here in Python, under the captions, which keep running
+    # his Flow motion graphic text: laid over everything by ffmpeg, auto-timed to the spoken words, captions
+    # step aside. Optional per video (he is asked each time; an empty cuts.json means no). No B-roll, ever.
     import fx
-    flow, broll, planned_pops, planned_broll = [], [], [], []
+    flow, planned_pops = [], []
     if L.get("flow_cuts"):
         for s in json.loads((reel / "cuts.json").read_text(encoding="utf-8")):
-            is_broll = s.get("kind") == "broll"
-            (planned_broll if is_broll else planned_pops).append(s["t"])
+            if s.get("kind") == "broll":
+                print(f"  cut:    {s['file']:8} is B-roll, skipped (no B-roll, his call 10-18)")
+                continue
+            planned_pops.append(s["t"])
             p = reel / s["file"]
             if not p.exists():
                 print(f"  cut:    {s['file']:8} not generated yet, {s['t']:.2f}s stays on the footage")
@@ -699,9 +720,8 @@ def main():
             c = {**s, "path": p.resolve()}
             if c.get("from") == "auto" or c.get("speed") == "auto":
                 c = fx.auto_time(ff, c)
-            (broll if is_broll else flow).append(c)
-            print(f"  {'broll' if is_broll else 'cut'}:{'' if is_broll else '  '}  {s['file']:8} "
-                  f"\"{s.get('text', '')}\" at {s['t']:.2f}-{s['end']:.2f}s")
+            flow.append(c)
+            print(f"  cut:    {s['file']:8} \"{s.get('text', '')}\" at {s['t']:.2f}-{s['end']:.2f}s")
     # in-scene visuals (Omni edits of his own shot), fitted to the exact segment he uploaded
     edits = []
     if L.get("flow_cuts") and (reel / "edits.json").exists():
@@ -720,18 +740,13 @@ def main():
             edits.append({**e, "t": round(t_snap, 4), "path": path.resolve(), "dur": d, "clip_dur": clip_dur})
             print(f"  visual: {e['file']:8} at {e['t']:.2f}-{e['end']:.2f}s (fitted x{d / clip_dur:.3f})")
     hidden = [(c["t"], c["end"]) for c in tcuts + flow]
-    covered = hidden + [(c["t"], c["end"]) for c in broll]
-    trans_cuts = [c for c in scene if not any(x - 0.2 <= c <= y + 0.2 for x, y in covered)]
-    trans_cuts = sorted(trans_cuts + [x for c in broll for x in (c["t"], c["end"])])   # glow into and out of B-roll
+    trans_cuts = [c for c in scene if not any(x - 0.2 <= c <= y + 0.2 for x, y in hidden)]
     keys = fx.plan_zoom(sections, scene, words) if L.get("zoom") else []
 
     # sound: whooshes and pops, each a different file or pitch from the one before
     sfx_dir = ROOT / "sfx"
     events = []
     wt = tr.whoosh_times(sections, scene) if L["whoosh"] == "sections" else trans_cuts
-    # a B-roll cutaway gets its own whoosh unless another sound already sits on it
-    bw = [t for t in planned_broll if all(abs(t - x) > 1.2 for x in list(wt) + planned_pops)]
-    wt = sorted(list(wt) + bw)
     for k, t in enumerate(wt):
         events.append((t, sfx_dir / tr.WHOOSHES[k % 3], L["whoosh_db"], [0, -1, 1, -2, 2][k % 5]))
     for k, c in enumerate(sorted(tcuts + flow, key=lambda c: c["t"])):
@@ -783,7 +798,7 @@ def main():
                             str(out)], stdin=subprocess.PIPE)
     if edits:
         # his footage with the Omni-edited shots laid in at their exact slots, then to RGB
-        eargs, efc, elast = fx.edit_filters(edits, W, H, fps)
+        eargs, efc, elast = edit_filters(edits, fps)
         eargs[1] = video
         dcmd = [ff, "-v", "error", *eargs, "-filter_complex",
                 efc + f";[{elast}]scale=in_color_matrix=bt709:in_range=tv,format=rgb24[o]", "-map", "[o]"]
@@ -791,7 +806,6 @@ def main():
         dcmd = [ff, "-v", "error", "-i", video, "-vf",
                 f"scale={W}:{H}:flags=lanczos:in_color_matrix=bt709:in_range=tv,setsar=1,format=rgb24"]
     dec = subprocess.Popen(dcmd + [*limit, "-f", "rawvideo", "-pix_fmt", "rgb24", "-"], stdout=subprocess.PIPE)
-    readers = {}
     size = W * H * 3
     n = 0
     while True:
@@ -805,13 +819,6 @@ def main():
             zw, zh = W / z, H / z
             x0, y0 = (W - zw) * 0.5, (H - zh) * fx.ZOOM_Y
             img = img.resize((W, H), Image.BICUBIC, box=(x0, y0, x0 + zw, y0 + zh))
-        b = next((c for c in broll if c["t"] <= t < c["end"]), None)
-        if b:
-            if b["file"] not in readers:
-                readers[b["file"]] = broll_reader(ff, b, fps)
-            frame_b = readers[b["file"]](img)
-            k = min(clamp((t - b["t"]) / 0.1), clamp((b["end"] - t) / 0.07))   # same soft cut as text cuts
-            img = Image.blend(img, frame_b, k) if k < 1 else frame_b
         if L["frame"] == "card":
             img = frame_card(img, t, shots)
         img = transition(img, t, trans_cuts, L)
@@ -824,8 +831,6 @@ def main():
         n += 1
         if n % 250 == 0:
             print(f"  {a.look}: {n} frames", flush=True)
-    for r in readers.values():   # each B-roll decoder only had to give up its window's frames
-        r.proc.kill()
     enc.stdin.close()
     dec.wait()
     if enc.wait() != 0:
