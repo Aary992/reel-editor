@@ -1,6 +1,7 @@
 """Side-by-side of the style options: a labelled 3x2 grid video, a stills sheet, and copies in Downloads.
 
-  py -3.14 lab/compare.py --reel "reels/recording 55"
+  py -3.14 render.py --reel "reels/<name>" --look glass --out "reels/<name>/lab/glass.mp4"   (one per look)
+  py -3.14 lab/compare.py --reel "reels/<name>"
 """
 import argparse, json, shutil, subprocess
 from pathlib import Path

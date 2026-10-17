@@ -1,5 +1,5 @@
-"""Talking-head test render: inspo-style captions (Figtree ExtraBold, soft shadow, 2-3 words,
-hard cuts) placed per section type, plus a persistent POV title with a colour emoji."""
+"""The previous locked look (until 10-18), kept for reference. Its helpers (transcript tidy-up, caption
+chunking, sections, loudness, SFX, his on-screen text) are what render.py builds on, so keep this file."""
 import argparse, json, math, os, re, subprocess
 from pathlib import Path
 import numpy as np

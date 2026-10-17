@@ -1,84 +1,82 @@
 ---
 name: reel-edit
-description: "Aarit's talking-head Reel engine. Use whenever Aarit sends or points to a talking-head video/Reel to edit (an .mp4/.mov, usually in Downloads), says 'edit this reel', 'make this reel', 'do the usual edit', 'Flow clips are in', or gives a cover line or on-screen text for a Reel. Runs reel-editor/reel.py: captions, subtle zoom, 2-3 Flow text cuts, money-burn edit, SFX, loudness, cover, caption pack, all in his locked style."
+description: "Aarit's Reel engine. Use whenever Aarit sends or points to a video/Reel to edit (an .mp4/.mov, usually in Downloads), says 'edit this reel', 'make this reel', 'do the usual edit', 'Flow clips are in', or gives a cover line or on-screen text for a Reel. Runs reel-editor/reel.py in his locked look: bold iOS captions with rotating key-word colours, light-leak cuts, optional Flow motion text, in-scene visuals, SFX, loudness, cover, caption pack."
 ---
 
-# Reel edit (Aarit's locked style)
+# Reel edit (Aarit's locked look)
 
-Engine folder: `C:\Users\Aaru\Documents\reel-editor` on the laptop, `D:\My Data\Documents\cc\reel-editor`
-on the PC (see `PC_SETUP.md`). Run `git pull` in it first so both machines use the same engine. Read `STYLE.md` and `TEXT_CUTS.md` there before the first run in a session.
-Run Python with `py -3.14` (system Python has Pillow and numpy; transcription uses the venv set in
-`config.json`). Never change the locked look unless he asks for a change.
+Engine: `C:\Users\Aaru\Documents\reel-editor` on the laptop, `D:\My Data\Documents\cc\reel-editor` on the
+PC. Run `git pull` there first. Read `README.md`, `STYLE.md` and `FLOW.md` before the first run in a session.
+Python is `py -3.14`. Never change the look unless he asks.
 
-## 1. He sends a video → ASK FIRST, then prep
+## 1. He sends a video: ask first
 
-**Before anything else, ask him: "Do you want motion graphic text in this video?"** (yes or no). Never
-assume, never carry the answer over from the last video. Prep refuses to run without it.
+Ask him one question before anything else: **"Do you want motion graphic text in this video?"**
+Never assume, never reuse the last answer. Prep refuses to run without it.
+
+## 2. Prep
 
 ```
-py -3.14 reel.py prep "<video path>" --text-cuts yes|no [--name "<short name>"]
+py -3.14 reel.py prep "<video>" --text-cuts yes|no --name "<short name>"
 ```
-This transcribes the video and finds his cards and split screens. If he talks about losing money, it cuts
-that segment for the money burn. With `yes` it picks 2-3 motion graphic text moments; with `no` there are
-none. It writes `reels/<name>/flow prompts.txt`, saves 3 cover frames (`covers/cover_1..3.png`) and renders
-`<name> preview.mp4`.
+It transcribes, finds the exact shot cuts, picks motion text (if yes), finds a money-burn line, saves 3
+cover frames and builds `Downloads\<name> Flow\` when there is anything to make in Flow.
 
-**No B-roll, ever** (his call 10-18). Flow is only for the motion graphic text (when he said yes) and the
-in-scene visuals (Omni edits of his own shot, see TEXT_CUTS.md).
+## 3. Review (Claude)
 
-If he said yes, **review the picks yourself** (the TEXT_CUTS.md rules):
-- Numbers first, spread out, the words must be what he actually says.
-- Skip anything the screen already shows.
-- Re-pick with `py -3.14 reel.py repick "<name>" --only "TEXT|TEXT"` when you know better.
+- **Transcript:** look for misheard words, especially Hinglish and brand names. Fix them in `words.json` and
+  tell him what you changed or what you're unsure of.
+- **Motion text** (if yes): check the picks against FLOW.md. Re-pick with
+  `py -3.14 reel.py repick "<name>" --only "TEXT|TEXT"`.
+- **Visuals:** look at the shots. On 0 to 2 lines with feeling, where he isn't talking to camera, add one:
+  `py -3.14 reel.py visual "<name>" START END "what changes, visible from the first frame"`.
+- **Covers:** look at `reels\<name>\covers\`. If none is a good face frame, find one yourself
+  (you'll pass it as `--cover t=SECONDS`).
+- **No B-roll, ever.**
 
-Check the transcript for mis-heard words, especially Hinglish. If Whisper got a key word wrong, tell him.
+## 4. Hand over
 
-**Flow only edits clips of 10 s or less.** Prep also cuts his whole Reel into parts of at most 9 s in
-`Downloads\<name> flow parts\` (part 1 (0-9s).mp4, part 2 (9-18s).mp4 ...; a short tail is shared out evenly),
-so he can upload them to Flow straight away. Redo it with `py -3.14 reel.py split "<name>"`. To split any other
-video (e.g. a finished render) call `reel.split_for_flow(cfg, path, name)`. Never hand him anything for Flow
-longer than 9 s.
+Tell him, briefly:
+- what to make in Flow: the folder `Downloads\<name> Flow\`, how many clips, and that each one says how to
+  make it in `flow prompts.txt`. If nothing is needed, say so and go straight to step 6.
+- the cover frame you recommend.
+- any words you're unsure Whisper heard right.
 
-Give him:
-- The prompts file.
-- The 9 s Flow parts folder in Downloads.
-- The preview.
-- The 3 cover frames (recommend one).
-- What to save where (exact file names).
+Ask for his cover line and whether he wants on-screen text.
 
-Ask for his cover line and whether he wants any on-screen text.
-
-## 2. "Flow clips are in" → check, then render
+## 5. "Flow clips are in"
 
 ```
 py -3.14 reel.py status "<name>"
 ```
-- **Look at frames of every clip before rendering:** check the spelling, and that the content matches the
-  cut. His file names have been swapped before. Map by content with
-  `py -3.14 reel.py map "<name>" "<his file>.mp4" "<TEXT>"`.
-- **Money clip:** check his face and lip sync are unchanged.
+It collects correctly named clips from the Flow folder and lists the rest. For every clip, look at frames:
+- motion text: spelling, letter by letter.
+- visuals / money burn: he's unchanged, and the cut inside the clip lands at the same time as the source
+  (measure it frame by frame). Drop a drifted clip with `reel.py visual "<name>" --drop V1`.
+
+Assign Flow-named files by content: `py -3.14 reel.py map "<name>" "<file>.mp4" T2`.
+
+## 6. Render
 
 ```
-py -3.14 reel.py render "<name>" --cover-line "<his exact words>" [--cover 2] [--text "..." --text-start S --text-secs 1-4]
+py -3.14 reel.py render "<name>" --cover-line "<his exact words>" --cover t=43 [--text "..." --text-start S --text-secs 1-4]
 ```
-The script checks that the frame count matches the source and that loudness lands around -14 LUFS.
-Then look at frames inside every text cut and the money window yourself before you say it's done.
+About 0.5 s per frame, so run it in the background. It checks frame count and loudness and delivers
+`<name> final.mp4` and `<name> cover.jpg` to Downloads. Then look at frames inside every Flow window and
+around a few cuts before you say it's done.
 
-## 3. Caption pack
+## 7. Caption pack
 
-Write `<name> caption pack.txt` next to the final in Downloads:
-- **Instagram:** caption plus 3-5 hashtags.
+Write `Downloads\<name> caption pack.txt`:
+- **Instagram:** caption plus 3 to 5 hashtags.
 - **YouTube Shorts:** title and description.
-- **LinkedIn:** a version that is finance/business only, Gen-Z tone, and educational.
+- **LinkedIn:** finance/business only, Gen-Z tone, educational.
 
-Rules for all three:
-- Plain human tone. No em dashes, no `---`.
-- No buy/sell advice. If it's about trading: "Not SEBI registered. Not financial advice", plus "virtual
-  money" when that's the case.
-- Use real numbers from what he says or what's on screen. Never invent any.
+Plain human tone, no em dashes, no `---`. No buy/sell advice; on trading content add "Not SEBI registered.
+Not financial advice" (and "virtual money" when true). Only real numbers he said or the screen shows;
+leave out any he hasn't confirmed.
 
 ## Hard rules
-- **No music, ever.**
+- No music, ever. No B-roll, ever.
 - Don't post, commit or push anything without his yes.
-- Report honestly what was verified and what wasn't. You can't hear audio, so sound checks are by
-  measurement.
+- Report honestly what was checked and what wasn't. Sound is checked by measurement only.

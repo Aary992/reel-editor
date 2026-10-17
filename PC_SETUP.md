@@ -46,7 +46,8 @@ Close and reopen PowerShell afterwards, so the new ffmpeg is on PATH.
 cd "D:\My Data\Documents\cc\reel-editor"
 Get-Content config.json
 Test-Path "$HOME\.claude\skills\reel-edit\SKILL.md"
-py -3.14 reel.py prep "C:\Users\Admin\Downloads\<any talking-head video>.mp4" --name "pc test"
+py -3.14 reel.py prep "C:\Users\Admin\Downloads\<any short video>.mp4" --text-cuts no --name "pc test"
+py -3.14 reel.py preview "pc test"
 ```
 - `config.json` should show:
   - an ffmpeg path
@@ -54,7 +55,8 @@ py -3.14 reel.py prep "C:\Users\Admin\Downloads\<any talking-head video>.mp4" --
   - a Python 3.14 path
   - `C:\Users\Admin\Downloads`
 - `Test-Path` should print `True`.
-- The test run should end with `ready:` and leave a preview at `reels\pc test\pc test preview.mp4`.
+- The prep should end with `ready:`. The preview takes about 0.5 s per frame and leaves
+  `reels\pc test\pc test preview.mp4`. Captions use Segoe UI Variable, which comes with Windows 11.
   The first run also downloads the Whisper model (about 464 MB), so it takes longer.
 
 Delete the test folder afterwards if you like: `Remove-Item -Recurse "reels\pc test"`.
@@ -62,10 +64,11 @@ Delete the test folder afterwards if you like: `Remove-Item -Recurse "reels\pc t
 ## 5. Use it
 
 Open Claude Code from `D:\My Data\Documents\cc` (restart it once after setup so it loads the
-`reel-edit` skill), then send it your video. Claude runs the whole thing:
-1. It preps the video, then hands you the Flow prompts, a preview and 3 cover frames.
-2. You save your Flow clips into `reels\<name>\` and send your cover line.
-3. It renders the final into Downloads.
+`reel-edit` skill), then send it your video. The whole process is in `README.md`:
+1. Claude asks whether you want motion graphic text, then preps the video.
+2. If there's anything to make in Flow, it's all in `Downloads\<name> Flow\` with `flow prompts.txt`.
+   Save your Flow clips back into that folder and tell Claude "Flow clips are in".
+3. Send your cover line. Claude renders the final, cover and caption pack into Downloads.
 
 The look is fixed in `STYLE.md`.
 

@@ -5,7 +5,7 @@ counts) because the one approved animation is the "17 TRADES" count-up + slide. 
 exactly as long as he is saying those words. Writes:
   cuts.json         slots the renderer cuts to   {file, t, end, from, speed, text, kind}
   text cuts.txt     one Flow prompt per slot, all in the same style pack
-Claude reviews both before Aarit spends Flow credits; see TEXT_CUTS.md for the rules."""
+Claude reviews both before Aarit spends Flow credits; see FLOW.md for the rules."""
 import argparse, json, re
 from pathlib import Path
 
@@ -183,7 +183,7 @@ def main():
     blocked = [(s["start"], s["end"]) for s in sections if s["kind"] == "card" and s["end"] - s["start"] > 0.4]
     edits = reel / "edits.json"
     if edits.exists():
-        blocked += [(e["t"], e["end"]) for e in json.loads(edits.read_text())]
+        blocked += [(e["t"], e["end"]) for e in json.loads(edits.read_text(encoding="utf-8"))]
 
     cands = candidates(merged)
     for c in cands:

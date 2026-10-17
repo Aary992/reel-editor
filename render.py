@@ -1,10 +1,13 @@
-"""Style lab: render one Reel in an alternative look, to compare against the locked style.
+"""The renderer for Aarit's locked look ("v2", locked 10-18; see STYLE.md). reel.py calls it.
 
-Nothing here changes the locked engine (reel.py / talk_reel.py). Captions, transitions, grading,
-the keynote card frame and the code-made text cuts are all drawn per frame in Python, then encoded once.
-No B-roll cutaways (his call 10-18); Flow motion graphic text only when he said yes for that video.
+Every frame is drawn in Python: the approved face zoom, his in-scene Flow visuals laid into the footage,
+the light-leak glow on cuts, the light grade, then bold iOS-style captions that blur in word by word.
+His Flow motion graphic text goes on top in ffmpeg. Voice to -14 LUFS, whooshes, pops and the +20% accents.
 
-  py -3.14 lab/lab_render.py --reel "reels/recording 55" --look glass --out "out.mp4"
+  py -3.14 render.py --reel "reels/<name>" --out "out.mp4" [--seconds 8] [--text "..." --text-start S]
+
+The other looks in LOOKS (glass, spotlight, cinematic, keynote, kinetic) are the 10-17 style tests he
+compared; only "v2" is in use. No B-roll cutaways, ever (his call 10-18).
 """
 import argparse, json, math, subprocess, sys
 from functools import lru_cache
@@ -12,7 +15,7 @@ from pathlib import Path
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
 import talk_reel as tr   # noqa: E402
 
@@ -649,6 +652,15 @@ def refine_cuts(ff, video, rough, fps_f):
     return out
 
 
+def exact_cuts(ff, video):
+    """Every hard cut in his edit, on the exact frame (rough detection, then refine_cuts)."""
+    sys.path.insert(0, str(ROOT))
+    from cuts import find_cuts
+    fps = tr.probe(ff, video, "v:0", "r_frame_rate")
+    num, den = (fps.split("/") + ["1"])[:2]
+    return refine_cuts(ff, video, find_cuts(ff, video, threshold=0.15), float(num) / float(den))
+
+
 def edit_filters(edits, fps_str):
     """Like fx.edit_filters, but each edit can start showing at `on` (the real shot cut inside the uploaded
     segment), so the few frames of the previous shot that Flow also re-drew are never used."""
@@ -672,11 +684,15 @@ def main():
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")   # ₹ in cut names vs the Windows console
     ap = argparse.ArgumentParser()
     ap.add_argument("--reel", required=True)
-    ap.add_argument("--look", required=True, choices=list(LOOKS))
+    ap.add_argument("--look", default="v2", choices=list(LOOKS), help="v2 is the locked look")
     ap.add_argument("--out", required=True)
-    ap.add_argument("--cuts-at", default="", help="comma list of shot cut times (else detected)")
+    ap.add_argument("--cuts-at", default="", help="comma list of rough shot cuts (else shots.json, else detected)")
     ap.add_argument("--seconds", type=float, default=0, help="render only the first N seconds (test)")
     ap.add_argument("--leak", default="", choices=[""] + list(LEAK_COLORS), help="force this video's leak colour")
+    ap.add_argument("--text", default="", help="his own on-screen text, lines separated by |")
+    ap.add_argument("--text-start", type=float, default=0.0)
+    ap.add_argument("--text-secs", type=float, default=3.0, help="clamped to 1-4 seconds")
+    ap.add_argument("--emoji", default="")
     a = ap.parse_args()
     L = dict(LOOKS[a.look])
     cfg = json.loads((ROOT / "config.json").read_text())
@@ -689,12 +705,15 @@ def main():
     words = tr.tidy_words(json.loads((reel / "words.json").read_text(encoding="utf-8"))["words"])
     wins = caption_windows(tr.chunk(words), L)
     sections = tr.load_sections(reel / "sections.json")
-    from cuts import find_cuts
-    rough = [float(x) for x in a.cuts_at.split(",")] if a.cuts_at else find_cuts(ff, video, threshold=0.15)
     fps = tr.probe(ff, video, "v:0", "r_frame_rate")
     num, den = (fps.split("/") + ["1"])[:2]
     fps_f = float(num) / float(den)
-    scene = refine_cuts(ff, video, rough, fps_f)
+    if a.cuts_at:
+        scene = refine_cuts(ff, video, [float(x) for x in a.cuts_at.split(",")], fps_f)
+    elif (reel / "shots.json").exists():
+        scene = json.loads((reel / "shots.json").read_text())["cuts"]
+    else:
+        scene = exact_cuts(ff, video)
     print("  cuts:", ", ".join(f"{c:.2f}" for c in scene))
     dur = float(tr.probe(ff, video, "v:0", "duration"))
     shots = list(zip([0.0] + scene, scene + [dur + 1]))
@@ -760,6 +779,17 @@ def main():
             events.append((t, imp if kind == "impact" else ding, -12 if kind == "impact" else -15, 0))
             print(f"  accent: {kind:6} on \"{word}\" at {t:.2f}s")
         print(f"  sfx: {len(taken)} planned + {n_extra} accents")
+    # his own on-screen text: Instagram-text look, 1-4 s, hidden on text cards, a pop as it appears
+    title, t_on, t_off = None, 0.0, 0.0
+    if a.text:
+        t_on = a.text_start
+        t_off = t_on + min(max(a.text_secs, 1.0), 4.0)
+        tp = Path(a.out).resolve().with_name(Path(a.out).stem + "_text.png")
+        emoji = chr(int(a.emoji[2:], 16)) if a.emoji.upper().startswith("U+") else a.emoji
+        tr.build_title(a.text.split("|"), emoji, tp)
+        title = Image.open(tp).convert("RGBA")
+        events.append((t_on, sfx_dir / tr.TEXT_POP, -12, 0))
+        print(f"  text:   \"{a.text}\" at {t_on:.2f}-{t_off:.2f}s")
 
     out = Path(a.out).resolve()
     inputs = ["-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{W}x{H}", "-framerate", fps, "-i", "-", "-i", video]
@@ -827,6 +857,11 @@ def main():
         if cut:
             img = text_cut_frame(cut, t, img, L["textcut"])
         img = draw_captions(img, t, wins, L, hidden)
+        if title and t_on <= t < t_off and not any(x <= t < y for x, y in hidden):
+            k = min(clamp((t - t_on) / 0.09), clamp((t_off - t) / 0.07))
+            img = img.convert("RGBA")
+            img.alpha_composite(fade_alpha(title, k))
+            img = img.convert("RGB")
         enc.stdin.write(img.tobytes())
         n += 1
         if n % 250 == 0:
