@@ -2,16 +2,16 @@
 
   1. ASK HIM FIRST: "Do you want motion graphic text in this video?"
   2. py -3.14 reel.py prep "<video>" --text-cuts yes|no [--name NAME]
-        transcribe, exact shot cuts, money-burn line, motion text picks (if yes), 3 cover frames, and the
-        Flow folder in Downloads ("NAME Flow") when there is anything to make in Flow.
+        transcribe, exact shot cuts, money-burn line, motion text picks (if yes), and the Flow folder in
+        Downloads ("NAME Flow") when there is anything to make in Flow.
      py -3.14 reel.py repick NAME --only "₹1 CRORE|DAY 2"      Claude's override of the motion text picks
      py -3.14 reel.py visual NAME START END "what changes"     add an in-scene Flow visual on that shot
      py -3.14 reel.py visual NAME --drop V1                    take one out again
   3. He makes the clips in Flow and saves them into the Flow folder.
      py -3.14 reel.py status NAME                              collects his clips, says what is missing
      py -3.14 reel.py map NAME "<flow file>.mp4" T2            a clip with Flow's own name goes to its slot
-  4. py -3.14 reel.py render NAME --cover-line "his words" [--cover t=43] [--text "..." --text-start S]
-        final Reel + cover into Downloads, checked for frame count and loudness.
+  4. py -3.14 reel.py render NAME [--text "..." --text-start S]
+        the final Reel into Downloads, checked for frame count and loudness. No cover, no caption pack.
      py -3.14 reel.py preview NAME                             same render, kept in reels/NAME (no delivery)
      py -3.14 reel.py split NAME                               redo the 9 s parts in the Flow folder
 
@@ -258,18 +258,18 @@ def cmd_prep(a, cfg):
     reel = REELS / name
     reel.mkdir(parents=True, exist_ok=True)
     (reel / "source.json").write_text(json.dumps({"video": src}))
-    print(f"[1/6] transcribing {Path(src).name}")
+    print(f"[1/5] transcribing {Path(src).name}")
     if not (reel / "words.json").exists():
         wav = reel / "audio16k.wav"
         run([cfg["ffmpeg"], "-hide_banner", "-loglevel", "error", "-y", "-i", src, "-vn", "-ar", "16000", "-ac", "1", wav])
         run([cfg["whisper_python"], "-W", "ignore", ROOT / "transcribe.py", wav, reel / "words.json"])
         wav.unlink(missing_ok=True)
-    print("[2/6] shots on the exact frame, his text cards and split screens")
+    print("[2/5] shots on the exact frame, his text cards and split screens")
     run([cfg["python"], ROOT / "sections.py", cfg["ffmpeg"], src, reel / "sections.json"])
     sys.path.insert(0, str(ROOT))
     import render as renderer
     save(reel, "shots.json", {"cuts": renderer.exact_cuts(cfg["ffmpeg"], src)})
-    print("[3/6] looking for a money-loss line for the money-burn edit")
+    print("[3/5] looking for a money-loss line for the money-burn edit")
     edits = [e for e in load(reel, "edits.json", []) if e.get("kind") != "money" and e["file"] != "money.mp4"]
     save(reel, "edits.json", edits)
     seg = loss_segment(reel)
@@ -281,7 +281,7 @@ def cmd_prep(a, cfg):
     # motion graphic text is optional per video: he is asked every time, and the answer is kept with the reel
     save(reel, "options.json", {"text_cuts": a.text_cuts})
     if a.text_cuts == "yes":
-        print("[4/6] picking motion graphic text moments")
+        print("[4/5] picking motion graphic text moments")
         cmd = [cfg["python"], ROOT / "moments.py", "--reel", reel]
         if a.only:
             cmd += ["--only", a.only]
@@ -289,12 +289,8 @@ def cmd_prep(a, cfg):
         print("\n".join("    " + ln.strip() for ln in out.splitlines() if "PICK" in ln))
     else:
         save(reel, "cuts.json", [])
-        print("[4/6] no motion graphic text in this video (his choice)")
-    print("[5/6] picking cover frames")
-    run([cfg["python"], ROOT / "cover_pick.py", "--video", src, "--sections", reel / "sections.json",
-         "--outdir", reel / "covers", "--ffmpeg", cfg["ffmpeg"]], quiet=True)
-    print(f"    {reel / 'covers'} (cover_1..3.png)")
-    print("[6/6] Flow folder")
+        print("[4/5] no motion graphic text in this video (his choice)")
+    print("[5/5] Flow folder")
     write_flow(cfg, reel)
     print(f"\nready: {reel}\n  next: Claude reviews the picks and adds any visuals (reel.py visual), then he makes the "
           f"Flow clips; with nothing for Flow, go straight to render")
@@ -448,17 +444,8 @@ def cmd_render(a, cfg):
     render(reel, cfg, final, a)
     src = source(reel)
     check(cfg, src, final)
-    outs = [final]
-    if a.cover_line:
-        times = load(reel, "covers/covers.json", [])
-        t = float(a.cover[2:]) if a.cover.startswith("t=") else times[int(a.cover) - 1]
-        cover = reel / f"{a.name} cover.jpg"
-        run([cfg["python"], ROOT / "cover.py", "--video", src, "--t", t, "--line", a.cover_line, "--out", cover,
-             "--ffmpeg", cfg["ffmpeg"]])
-        outs.append(cover)
     if not a.no_deliver:
-        for p in outs:
-            print(f"    delivered {deliver(p, cfg, p.name)}")
+        print(f"    delivered {deliver(final, cfg, final.name)}")
 
 
 def main():
@@ -492,8 +479,6 @@ def main():
     p.add_argument("name")
     p = sub.add_parser("render")
     p.add_argument("name")
-    p.add_argument("--cover-line", default="")
-    p.add_argument("--cover", default="1", help="1, 2, 3 (picked frames) or t=SECONDS")
     p.add_argument("--text", default="")
     p.add_argument("--text-start", type=float, default=0.0)
     p.add_argument("--text-secs", type=float, default=3.0)

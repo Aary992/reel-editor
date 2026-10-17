@@ -47,11 +47,10 @@ Don't change any of it unless he asks. `render.py` applies all of it; the values
   no other sound and at least 2.5 s from any. Made in code (`render.ensure_sfx`), so nothing to download.
 - Voice: two-pass loudnorm to -14 LUFS, limiter at -2.5 dB (recording 55: -14.1 LUFS, -2.3 dB peak).
 
-## His own text and the cover
+## His own text
 - On-screen text is optional. He types it; it shows for 1 to 4 s in an Instagram-text look (Figtree Bold,
   white, soft shadow, optional colour emoji), fades 0.09 s in and 0.07 s out, hidden during motion text.
-- Cover: his line exactly as he writes it, Figtree Bold, on a still face frame (Claude recommends one of the
-  3 picks or a better moment with `--cover t=SECONDS`), kept inside the 3:4 grid area.
+- **No cover (thumbnail) and no caption pack, for any reel** (his call 10-18).
 
 ## Never (all tried and rejected)
 - B-roll cutaways (stock or Flow-made; tried again 10-17, dropped for good 10-18).

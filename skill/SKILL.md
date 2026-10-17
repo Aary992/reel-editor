@@ -1,6 +1,6 @@
 ---
 name: reel-edit
-description: "Aarit's Reel engine. Use whenever Aarit sends or points to a video/Reel to edit (an .mp4/.mov, usually in Downloads), says 'edit this reel', 'make this reel', 'do the usual edit', 'Flow clips are in', or gives a cover line or on-screen text for a Reel. Runs reel-editor/reel.py in his locked look: bold iOS captions with rotating key-word colours, light-leak cuts, optional Flow motion text, in-scene visuals, SFX, loudness, cover, caption pack."
+description: "Aarit's Reel engine. Use whenever Aarit sends or points to a video/Reel to edit (an .mp4/.mov, usually in Downloads), says 'edit this reel', 'make this reel', 'do the usual edit', 'Flow clips are in', gives on-screen text for a Reel, or sends a script with raw clips to assemble. Runs reel-editor/reel.py in his locked look: bold iOS captions with rotating key-word colours, light-leak cuts, optional Flow motion text, in-scene visuals, SFX, loudness. No cover, no caption pack."
 ---
 
 # Reel edit (Aarit's locked look)
@@ -19,8 +19,8 @@ Never assume, never reuse the last answer. Prep refuses to run without it.
 ```
 py -3.14 reel.py prep "<video>" --text-cuts yes|no --name "<short name>"
 ```
-It transcribes, finds the exact shot cuts, picks motion text (if yes), finds a money-burn line, saves 3
-cover frames and builds `Downloads\<name> Flow\` when there is anything to make in Flow.
+It transcribes, finds the exact shot cuts, picks motion text (if yes), finds a money-burn line and builds
+`Downloads\<name> Flow\` when there is anything to make in Flow.
 
 ## 3. Review (Claude)
 
@@ -30,19 +30,16 @@ cover frames and builds `Downloads\<name> Flow\` when there is anything to make 
   `py -3.14 reel.py repick "<name>" --only "TEXT|TEXT"`.
 - **Visuals:** look at the shots. On 0 to 2 lines with feeling, where he isn't talking to camera, add one:
   `py -3.14 reel.py visual "<name>" START END "what changes, visible from the first frame"`.
-- **Covers:** look at `reels\<name>\covers\`. If none is a good face frame, find one yourself
-  (you'll pass it as `--cover t=SECONDS`).
-- **No B-roll, ever.**
+- **No B-roll, ever.** No cover (thumbnail) and no caption pack either (his call 10-18).
 
 ## 4. Hand over
 
 Tell him, briefly:
 - what to make in Flow: the folder `Downloads\<name> Flow\`, how many clips, and that each one says how to
   make it in `flow prompts.txt`. If nothing is needed, say so and go straight to step 6.
-- the cover frame you recommend.
 - any words you're unsure Whisper heard right.
 
-Ask for his cover line and whether he wants on-screen text.
+Ask whether he wants on-screen text.
 
 ## 5. "Flow clips are in"
 
@@ -59,24 +56,18 @@ Assign Flow-named files by content: `py -3.14 reel.py map "<name>" "<file>.mp4" 
 ## 6. Render
 
 ```
-py -3.14 reel.py render "<name>" --cover-line "<his exact words>" --cover t=43 [--text "..." --text-start S --text-secs 1-4]
+py -3.14 reel.py render "<name>" [--text "..." --text-start S --text-secs 1-4]
 ```
 About 0.5 s per frame, so run it in the background. It checks frame count and loudness and delivers
-`<name> final.mp4` and `<name> cover.jpg` to Downloads. Then look at frames inside every Flow window and
-around a few cuts before you say it's done.
+`<name> final.mp4` to Downloads. Then look at frames inside every Flow window and around a few cuts before
+you say it's done. That's the whole delivery: no cover, no caption pack.
 
-## 7. Caption pack
+## Raw clips instead of an edited video (experiment, not in the engine yet)
 
-Write `Downloads\<name> caption pack.txt`:
-- **Instagram:** caption plus 3 to 5 hashtags.
-- **YouTube Shorts:** title and description.
-- **LinkedIn:** finance/business only, Gen-Z tone, educational.
-
-Plain human tone, no em dashes, no `---`. No buy/sell advice; on trading content add "Not SEBI registered.
-Not financial advice" (and "virtual money" when true). Only real numbers he said or the screen shows;
-leave out any he hasn't confirmed.
+If he sends a script and raw takes instead of an edited video, see `lab/ASSEMBLE.md`: `lab/assemble.py`
+picks the best take per script line and assembles one video, which then goes through step 1 as usual.
 
 ## Hard rules
-- No music, ever. No B-roll, ever.
+- No music, ever. No B-roll, ever. No cover or caption pack.
 - Don't post, commit or push anything without his yes.
 - Report honestly what was checked and what wasn't. Sound is checked by measurement only.

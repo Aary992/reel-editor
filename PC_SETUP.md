@@ -68,7 +68,7 @@ Open Claude Code from `D:\My Data\Documents\cc` (restart it once after setup so 
 1. Claude asks whether you want motion graphic text, then preps the video.
 2. If there's anything to make in Flow, it's all in `Downloads\<name> Flow\` with `flow prompts.txt`.
    Save your Flow clips back into that folder and tell Claude "Flow clips are in".
-3. Send your cover line. Claude renders the final, cover and caption pack into Downloads.
+3. Claude renders the final into Downloads.
 
 The look is fixed in `STYLE.md`.
 
