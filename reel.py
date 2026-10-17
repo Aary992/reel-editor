@@ -6,7 +6,7 @@
   python reel.py repick NAME --only "DAY 1|17 TRADES"     (Claude's review override)
   python reel.py map NAME "his clip name.mp4" "17 TRADES" (when his file names don't match)
   python reel.py split NAME
-      his source cut into parts of at most 30 s (Flow's limit), in Downloads, folder "NAME flow parts". prep runs it too.
+      his source cut into parts of at most 9 s (Flow edits only clips of 10 s or less), in Downloads, folder "NAME flow parts". prep runs it too.
   python reel.py status NAME
   python reel.py render NAME --cover-line "his words" [--cover 2] [--text "..." --text-start 0 --text-secs 3]
       final Reel + cover, checked for sync and loudness, copied to Downloads.
@@ -118,11 +118,11 @@ def export_segment(cfg, src, t, end, out):
          "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", out])
 
 
-FLOW_MAX = 30.0  # Google Flow takes at most 30 s of video per clip
+FLOW_MAX = 9.0  # Google Flow only edits clips of 10 s or less (he hit this 10-17); 9 s leaves a margin
 
 
 def split_for_flow(cfg, src, name):
-    """His whole Reel in parts of at most 30 s, into Downloads, so he can upload them to Flow."""
+    """His whole Reel in parts of at most 9 s, into Downloads, so he can upload them to Flow."""
     dur = float(run([ffprobe(cfg), "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", src],
                     quiet=True).strip())
     n = int(-(-dur // FLOW_MAX))
@@ -194,7 +194,7 @@ def cmd_prep(a, cfg):
     print("\n".join("    " + ln.strip() for ln in out.splitlines() if "PICK" in ln))
     write_flow_prompts(reel)
     folder, n = split_for_flow(cfg, src, name)
-    print(f"    {n} Flow part(s) of max 30 s in {folder}")
+    print(f"    {n} Flow part(s) of max {FLOW_MAX:.0f} s in {folder}")
     print("[5/6] picking cover frames")
     run([cfg["python"], ROOT / "cover_pick.py", "--video", src, "--sections", reel / "sections.json",
          "--outdir", reel / "covers", "--ffmpeg", cfg["ffmpeg"]])
