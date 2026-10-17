@@ -11,6 +11,8 @@ as he is saying those words**, never longer. The Flow clip is generated per Reel
 2. `python moments.py --reel reels/<name>` drafts candidates and picks 2-3 (count set by the Reel's length).
 3. **Claude reviews the picks** and re-runs with `--only "TEXT|TEXT"` when it knows better (e.g. skip a
    number the screen is already showing).
+3b. Prep also splits his Reel into parts of at most 30 s (Flow's limit) in `Downloads\<name> flow parts\`
+   (`reel.py split <name>` redoes it). Nothing sent to Flow is ever longer than 30 s.
 4. Aarit generates each prompt in `text cuts.txt` in Flow, checks the spelling, and saves `T1.mp4`, `T2.mp4`...
 5. `python talk_reel.py ... --cuts reels/<name>/cuts.json --edits reels/<name>/edits.json`
 

@@ -26,8 +26,13 @@ Then **review the picks yourself** (the TEXT_CUTS.md rules):
 
 Check the transcript for mis-heard words, especially Hinglish. If Whisper got a key word wrong, tell him.
 
+**Flow takes at most 30 s of video per clip.** Prep also cuts his whole Reel into parts of at most 30 s in
+`Downloads\<name> flow parts\` (part 1 (0-30s).mp4, part 2 (30-55s).mp4 ...), so he can upload them to Flow
+straight away. Redo it with `py -3.14 reel.py split "<name>"`. Never hand him anything for Flow longer than 30 s.
+
 Give him:
 - The prompts file.
+- The 30 s Flow parts folder in Downloads.
 - The preview.
 - The 3 cover frames (recommend one).
 - What to save where (exact file names).

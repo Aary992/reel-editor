@@ -5,6 +5,8 @@
       one "flow prompts.txt", 3 cover frames and a preview render. No input needed from him.
   python reel.py repick NAME --only "DAY 1|17 TRADES"     (Claude's review override)
   python reel.py map NAME "his clip name.mp4" "17 TRADES" (when his file names don't match)
+  python reel.py split NAME
+      his source cut into parts of at most 30 s (Flow's limit), in Downloads, folder "NAME flow parts". prep runs it too.
   python reel.py status NAME
   python reel.py render NAME --cover-line "his words" [--cover 2] [--text "..." --text-start 0 --text-secs 3]
       final Reel + cover, checked for sync and loudness, copied to Downloads.
@@ -116,6 +118,27 @@ def export_segment(cfg, src, t, end, out):
          "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", out])
 
 
+FLOW_MAX = 30.0  # Google Flow takes at most 30 s of video per clip
+
+
+def split_for_flow(cfg, src, name):
+    """His whole Reel in parts of at most 30 s, into Downloads, so he can upload them to Flow."""
+    dur = float(run([ffprobe(cfg), "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", src],
+                    quiet=True).strip())
+    n = int(-(-dur // FLOW_MAX))
+    edges = [min(i * FLOW_MAX, dur) for i in range(n + 1)]
+    if n > 1 and edges[-1] - edges[-2] < 3.0:  # no stub of a part: share the length out evenly instead
+        edges = [dur * i / n for i in range(n + 1)]
+    folder = Path(cfg["deliver_dir"]) / f"{name} flow parts"
+    folder.mkdir(parents=True, exist_ok=True)
+    for old in folder.glob("*.mp4"):
+        old.unlink()
+    for i in range(n):
+        t, end = edges[i], edges[i + 1]
+        export_segment(cfg, src, round(t, 3), round(end, 3), folder / f"{name} part {i + 1} ({t:.0f}-{end:.0f}s).mp4")
+    return folder, n
+
+
 def write_flow_prompts(reel):
     sys.path.insert(0, str(ROOT))
     import moments
@@ -170,6 +193,8 @@ def cmd_prep(a, cfg):
     out = run(cmd, quiet=True)
     print("\n".join("    " + ln.strip() for ln in out.splitlines() if "PICK" in ln))
     write_flow_prompts(reel)
+    folder, n = split_for_flow(cfg, src, name)
+    print(f"    {n} Flow part(s) of max 30 s in {folder}")
     print("[5/6] picking cover frames")
     run([cfg["python"], ROOT / "cover_pick.py", "--video", src, "--sections", reel / "sections.json",
          "--outdir", reel / "covers", "--ffmpeg", cfg["ffmpeg"]])
@@ -182,6 +207,12 @@ def cmd_repick(a, cfg):
     reel = REELS / a.name
     run([cfg["python"], ROOT / "moments.py", "--reel", reel, "--only", a.only])
     write_flow_prompts(reel)
+
+
+def cmd_split(a, cfg):
+    src = json.loads((REELS / a.name / "source.json").read_text())["video"]
+    folder, n = split_for_flow(cfg, src, a.name)
+    print(f"{n} part(s) of max {FLOW_MAX:.0f} s in {folder}")
 
 
 def cmd_map(a, cfg):
@@ -285,6 +316,8 @@ def main():
     p.add_argument("name")
     p.add_argument("file")
     p.add_argument("text")
+    p = sub.add_parser("split")
+    p.add_argument("name")
     p = sub.add_parser("status")
     p.add_argument("name")
     p = sub.add_parser("render")
@@ -298,7 +331,7 @@ def main():
     p.add_argument("--no-deliver", action="store_true")
     a = ap.parse_args()
     cfg = config()
-    {"prep": cmd_prep, "repick": cmd_repick, "map": cmd_map, "status": cmd_status, "render": cmd_render}[a.cmd](a, cfg)
+    {"prep": cmd_prep, "repick": cmd_repick, "map": cmd_map, "split": cmd_split, "status": cmd_status, "render": cmd_render}[a.cmd](a, cfg)
 
 
 if __name__ == "__main__":
