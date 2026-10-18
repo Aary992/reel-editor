@@ -48,7 +48,10 @@ foreach ($k in $sfx.Keys) {
 
 Step "config.json for this machine"
 $py = (py -3.14 -c "import sys; print(sys.executable)").Trim()
-@{ ffmpeg = $ff; whisper_python = "$VenvPath\Scripts\python.exe"; python = $py; deliver_dir = "$HOME\Downloads" } |
+# the real Downloads folder: on the PC it was moved to D:\My Data\Downloads, so $HOME\Downloads doesn't exist
+$dl = (New-Object -ComObject Shell.Application).NameSpace('shell:Downloads').Self.Path
+if (-not $dl) { $dl = "$HOME\Downloads" }
+@{ ffmpeg = $ff; whisper_python = "$VenvPath\Scripts\python.exe"; python = $py; deliver_dir = $dl } |
   ConvertTo-Json | Set-Content "$root\config.json" -Encoding ascii
 
 Step "Claude skill"
