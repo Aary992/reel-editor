@@ -67,7 +67,7 @@ def tidy_words(raw):
             continue
         if words and words[-1]["t"].endswith(",") and text[:1].isupper() and text not in KEEP_CAPS and not text.isupper():
             text = text[0].lower() + text[1:]
-        words.append({"t": text, "s": x["s"], "e": x["e"]})
+        words.append({"t": text, "s": x["s"], "e": x["e"], "p": x.get("p", 1.0)})
     return words
 
 

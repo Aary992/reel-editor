@@ -7,7 +7,9 @@ His Flow motion graphic text goes on top in ffmpeg. Voice to -14 LUFS, whooshes,
   py -3.14 render.py --reel "reels/<name>" --out "out.mp4" [--seconds 8] [--text "..." --text-start S]
 
 The other looks in LOOKS (glass, spotlight, cinematic, keynote, kinetic) are the 10-17 style tests he
-compared; only "v2" is in use. No B-roll cutaways, ever (his call 10-18).
+compared. "v2" is the look locked 10-18; "story" (10-20) is his inspo's storytelling-reel edit: plain white
+captions, real app UI overlays above his head, punch-ins on jump cuts (story.py, overlays.py). The reel's
+look comes from its options.json (set at prep). No B-roll cutaways, ever (his call 10-18).
 """
 import argparse, json, math, subprocess, sys
 from functools import lru_cache
@@ -76,6 +78,15 @@ LOOKS = {
         shadow=(130, 10, 3), pill=None, y=0.70, maxw=900,
         transition="leak", span=0.32, grade="light", grain=0, frame=None, textcut=None,
         whoosh="sections", whoosh_db=-10, accents=0.2, flow_cuts=True, zoom=True),
+    # 7. "story" (10-20): his inspo's storytelling edit. Captions 2-3 words, white, no box, no animation, at
+    #    chin height; app UI overlays pop in above his head on the exact word; a punch-in on every jump cut;
+    #    hard cuts (no glow); pops on the graphics, a vine boom on the punchline, optional music 25% -> 10%.
+    "story": dict(
+        font=(SEG, "Bold Display", 63), color=(255, 255, 255), emph_color=None, emph_font=None,
+        case="sentence", reveal="chunk", anim=dict(dur=0.0, rise=0, blur=0, scale0=1.0, back=False),
+        shadow=(135, 4, 2), pill=None, y=0.55, maxw=720,
+        transition=None, span=0.0, grade="light", grain=0, frame=None, textcut=None,
+        whoosh="sections", whoosh_db=-10, accents=0, flow_cuts=True, zoom=False, story=True),
 }
 
 # iOS dark-mode system colours, ordered so neighbours never look alike
@@ -684,7 +695,8 @@ def main():
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")   # ₹ in cut names vs the Windows console
     ap = argparse.ArgumentParser()
     ap.add_argument("--reel", required=True)
-    ap.add_argument("--look", default="v2", choices=list(LOOKS), help="v2 is the locked look")
+    ap.add_argument("--look", default="", choices=[""] + list(LOOKS),
+                    help="default: the reel's options.json (set at prep), else v2")
     ap.add_argument("--out", required=True)
     ap.add_argument("--cuts-at", default="", help="comma list of rough shot cuts (else shots.json, else detected)")
     ap.add_argument("--seconds", type=float, default=0, help="render only the first N seconds (test)")
@@ -693,11 +705,17 @@ def main():
     ap.add_argument("--text-start", type=float, default=0.0)
     ap.add_argument("--text-secs", type=float, default=3.0, help="clamped to 1-4 seconds")
     ap.add_argument("--emoji", default="")
+    ap.add_argument("--music", default="", help="story look: a music bed, 25%% under the hook then 10%%")
+    ap.add_argument("--zones", action="store_true", help="draw the safe-zone map on every frame (layout check)")
     a = ap.parse_args()
+    reel = Path(a.reel) if Path(a.reel).is_absolute() else ROOT / a.reel
+    if not a.look:
+        opt = reel / "options.json"
+        a.look = (json.loads(opt.read_text()) if opt.exists() else {}).get("look", "v2")
+    print(f"  look: {a.look}")
     L = dict(LOOKS[a.look])
     cfg = json.loads((ROOT / "config.json").read_text())
     ff = cfg["ffmpeg"]
-    reel = Path(a.reel) if Path(a.reel).is_absolute() else ROOT / a.reel
     if L["transition"] == "leak" and a.look == "v2":
         L["leak_tint"] = pick_leak(reel.name, a.leak)
         print(f"  light leak colour for this video: {L['leak_tint']}")
@@ -761,6 +779,10 @@ def main():
     hidden = [(c["t"], c["end"]) for c in tcuts + flow]
     trans_cuts = [c for c in scene if not any(x - 0.2 <= c <= y + 0.2 for x, y in hidden)]
     keys = fx.plan_zoom(sections, scene, words) if L.get("zoom") else []
+    SP = None
+    if L.get("story"):
+        import story
+        SP = story.plan(reel, words, dur, fps_f, ff, scene, video, log=print, music=a.music)
 
     # sound: whooshes and pops, each a different file or pitch from the one before
     sfx_dir = ROOT / "sfx"
@@ -770,6 +792,13 @@ def main():
         events.append((t, sfx_dir / tr.WHOOSHES[k % 3], L["whoosh_db"], [0, -1, 1, -2, 2][k % 5]))
     for k, c in enumerate(sorted(tcuts + flow, key=lambda c: c["t"])):
         events.append((c["t"], sfx_dir / tr.POPS[k % 3], -12, [0, 2, -2][k % 3]))
+    if SP:
+        # every graphic pops on its word (inner parts softer), each a different pop or pitch from the last
+        for k, (t, kind) in enumerate(SP["pops"]):
+            events.append((t, sfx_dir / tr.POPS[k % 3], -14 if kind == "pop" else -19, [0, 2, -2, 3, -1][k % 5]))
+        if SP["boom"] is not None:
+            events.append((SP["boom"], story.ensure_boom(sfx_dir), -9, 0))
+        print(f"  sfx: {len(SP['pops'])} overlay pops" + (", vine boom" if SP["boom"] is not None else ""))
     if L.get("accents"):
         # +20% on the planned sounds (whooshes + one pop per text cut, made or not, so the plan stays put)
         taken = list(wt) + (planned_pops or [c["t"] for c in tcuts])
@@ -803,6 +832,14 @@ def main():
     fc += f";[{vlast}]format=yuv420p[v]"
     fc += f";[1:a]{tr.loudnorm_filter(ff, video)},aformat=sample_rates=48000:channel_layouts=stereo[voice]"
     mix = ["[voice]"]
+    music = SP.get("music") if SP else ""
+    if music:
+        first_end = next((w["e"] for w in words if w["t"][-1:] in ".!?"), 3.0)
+        inputs += ["-stream_loop", "-1", "-i", str(music)]
+        fc += ";" + story.music_filter(n_in, first_end, dur)
+        mix.append("[music]")
+        n_in += 1
+        print(f"  music: {Path(music).name}, 25% until {first_end:.2f}s then 10%")
     for k, (t, path, db, semis) in enumerate(sorted(events, key=lambda e: e[0])):
         peak_t, peak_amp = tr.sfx_peak(ff, path)
         ratio = 2 ** (semis / 12)
@@ -844,6 +881,8 @@ def main():
             break
         t = n / fps_f
         img = Image.frombuffer("RGB", (W, H), buf, "raw", "RGB", 0, 1)
+        if SP:
+            img = story.punch_frame(img, t, SP)
         z = fx.zoom_at(t, keys) if keys else 1.0
         if z > 1.0005:   # the approved subtle drift: 1.00 -> 1.06 per sentence, anchored at mouth height
             zw, zh = W / z, H / z
@@ -856,12 +895,18 @@ def main():
         cut = next((c for c in tcuts if c["t"] <= t < c["end"]), None)
         if cut:
             img = text_cut_frame(cut, t, img, L["textcut"])
-        img = draw_captions(img, t, wins, L, hidden)
+        if SP:
+            img = story.draw_overlays(img, t, SP)
+            img = story.draw_captions(img, t, wins, SP, hidden, words)
+        else:
+            img = draw_captions(img, t, wins, L, hidden)
         if title and t_on <= t < t_off and not any(x <= t < y for x, y in hidden):
             k = min(clamp((t - t_on) / 0.09), clamp((t_off - t) / 0.07))
             img = img.convert("RGBA")
             img.alpha_composite(fade_alpha(title, k))
             img = img.convert("RGB")
+        if a.zones and SP:
+            img = story.draw_zones(img)
         enc.stdin.write(img.tobytes())
         n += 1
         if n % 250 == 0:

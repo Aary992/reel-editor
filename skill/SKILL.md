@@ -1,13 +1,24 @@
 ---
 name: reel-edit
-description: "Aarit's Reel engine. Use whenever Aarit sends or points to a video/Reel to edit (an .mp4/.mov, usually in Downloads), says 'edit this reel', 'make this reel', 'do the usual edit', 'Flow clips are in', gives on-screen text for a Reel, or sends a script with raw clips to assemble. Runs reel-editor/reel.py in his locked look: bold iOS captions with rotating key-word colours, light-leak cuts, optional Flow motion text, in-scene visuals, SFX, loudness. No cover, no caption pack."
+description: "Aarit's Reel engine. Use whenever Aarit sends or points to a video/Reel to edit (an .mp4/.mov, usually in Downloads), sends raw takes to cut, says 'edit this reel', 'make this reel', 'do the usual edit', 'Flow clips are in', gives on-screen text for a Reel, or sends a script with raw clips to assemble. Runs reel-editor/reel.py: the story look (dead space cut, plain white TikTok captions, real app UI overlays above his head on the exact word, punch-ins on jump cuts, vine boom) or the v2 look (bold iOS captions, light-leak cuts). Optional Flow motion text, in-scene visuals, SFX, loudness. No cover, no caption pack."
 ---
 
-# Reel edit (Aarit's locked look)
+# Reel edit (Aarit's looks: story, and v2)
 
 Engine: `C:\Users\Aaru\Documents\reel-editor` on the laptop, `D:\My Data\Documents\cc\reel-editor` on the
 PC. Run `git pull` there first. Read `README.md`, `STYLE.md` and `FLOW.md` before the first run in a session.
-Python is `py -3.14`. Never change the look unless he asks.
+Python is `py -3.14`. The look is **story** (default since 10-20) unless he asks for v2. Never change a look
+unless he asks.
+
+## 0. Raw footage: cut it first
+
+If he sends raw takes (pauses, retakes, several hooks) rather than an edited video:
+```
+py -3.14 reel.py cut "<take 1>" "<take 2>" ... --name "<short name>"
+```
+Read `reels\<name>\cut report.txt`: what was cut and why, and every take's words. Drop what the rules can't
+know (alternative hooks, a take that doesn't belong, a phrase) and re-run with `--drop TAKE` or
+`--drop "phrase"`. The result, `reels\<name>\cut.mp4`, goes through step 1; its transcript comes from the cut.
 
 ## 1. He sends a video: ask first
 
@@ -17,7 +28,7 @@ Never assume, never reuse the last answer. Prep refuses to run without it.
 ## 2. Prep
 
 ```
-py -3.14 reel.py prep "<video>" --text-cuts yes|no --name "<short name>"
+py -3.14 reel.py prep "<video>" --text-cuts yes|no --name "<short name>" [--look story|v2]
 ```
 It transcribes, finds the exact shot cuts, picks motion text (if yes), finds a money-burn line and builds
 `Downloads\<name> Flow\` when there is anything to make in Flow.
@@ -30,6 +41,12 @@ It transcribes, finds the exact shot cuts, picks motion text (if yes), finds a m
   `py -3.14 reel.py repick "<name>" --only "TEXT|TEXT"`.
 - **Visuals:** look at the shots. On 0 to 2 lines with feeling, where he isn't talking to camera, add one:
   `py -3.14 reel.py visual "<name>" START END "what changes, visible from the first frame"`.
+- **Story look:** rewrite the drafted `overlays.json`: app UI cards that show what he says (his file going to
+  Claude, Claude's answer, a step tracker, a score, word pills, the comments sheet on the CTA), each part
+  anchored to his exact word, one at a time, nothing he didn't say. Write `story.json` with `"boom"`: the
+  punchline word (`"green"` only to override the headline number and CTA; `"music"` only for a different
+  track than his default, or `false` if he wants this one without). Check
+  with `py -3.14 reel.py overlays "<name>"` and `reel.py preview "<name>" --seconds 8 --zones`.
 - **No B-roll, ever.** No cover (thumbnail) and no caption pack either (his call 10-18).
 
 ## 4. Hand over
@@ -58,9 +75,10 @@ Assign Flow-named files by content: `py -3.14 reel.py map "<name>" "<file>.mp4" 
 ```
 py -3.14 reel.py render "<name>" [--text "..." --text-start S --text-secs 1-4]
 ```
-About 0.5 s per frame, so run it in the background. It checks frame count and loudness and delivers
-`<name> final.mp4` to Downloads. Then look at frames inside every Flow window and around a few cuts before
-you say it's done. That's the whole delivery: no cover, no caption pack.
+About 0.5 s per frame (v2) or 0.15 s (story), so run it in the background. It checks frame count and
+loudness and delivers `<name> final.mp4` to Downloads. Then look at frames inside every Flow window, around a
+few cuts and (story) at every overlay's pop and full state, before you say it's done: the render log flags
+any overlay that covers his hair or face. That's the whole delivery: no cover, no caption pack.
 
 ## Raw clips instead of an edited video (experiment, not in the engine yet)
 
@@ -68,6 +86,8 @@ If he sends a script and raw takes instead of an edited video, see `lab/ASSEMBLE
 picks the best take per script line and assembles one video, which then goes through step 1 as usual.
 
 ## Hard rules
-- No music, ever. No B-roll, ever. No cover or caption pack.
+- No B-roll, ever. No cover or caption pack. Music: every story reel gets his music bed (25% under the hook,
+  then 10%) from the track in `reel-editor\music\` (his call 10-20). If the render log says "NO MUSIC",
+  that folder is empty: ask him for a track. v2 reels have no music, ever.
 - Don't post, commit or push anything without his yes.
 - Report honestly what was checked and what wasn't. Sound is checked by measurement only.

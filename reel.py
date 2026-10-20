@@ -252,6 +252,16 @@ def write_flow(cfg, reel):
 
 # ---------- commands ----------
 
+def cmd_cut(a, cfg):
+    """The story look's first step on raw footage: dead space and mistakes out, no script needed."""
+    sys.path.insert(0, str(ROOT))
+    import storycut
+    name = a.name or Path(a.videos[0]).stem
+    out = storycut.run_cut(cfg, a.videos, name, drops=a.drop, max_pause=a.max_pause, fps=a.fps)
+    print(f"cut: {out}\n  next: Claude reads \"cut report.txt\", re-runs with --drop for alternative hooks or "
+          f"anything else that should go, then: reel.py prep \"{out}\" --name \"{name}\" --text-cuts yes|no")
+
+
 def cmd_prep(a, cfg):
     src = str(Path(a.video).resolve())
     name = a.name or Path(src).stem
@@ -279,7 +289,7 @@ def cmd_prep(a, cfg):
     else:
         print("    no loss line, no money burn this time")
     # motion graphic text is optional per video: he is asked every time, and the answer is kept with the reel
-    save(reel, "options.json", {"text_cuts": a.text_cuts})
+    save(reel, "options.json", {"text_cuts": a.text_cuts, "look": a.look})
     if a.text_cuts == "yes":
         print("[4/5] picking motion graphic text moments")
         cmd = [cfg["python"], ROOT / "moments.py", "--reel", reel]
@@ -292,8 +302,40 @@ def cmd_prep(a, cfg):
         print("[4/5] no motion graphic text in this video (his choice)")
     print("[5/5] Flow folder")
     write_flow(cfg, reel)
-    print(f"\nready: {reel}\n  next: Claude reviews the picks and adds any visuals (reel.py visual), then he makes the "
-          f"Flow clips; with nothing for Flow, go straight to render")
+    if a.look == "story" and not (reel / "overlays.json").exists():
+        cmd_overlays(argparse.Namespace(name=name, suggest=True, force=False), cfg)
+    print(f"\nready: {reel} (look: {a.look})\n  next: Claude reviews the transcript"
+          + (", writes overlays.json and story.json (reel.py overlays)" if a.look == "story" else "")
+          + " and the picks, adds any visuals (reel.py visual), then he makes the Flow clips; with nothing for "
+            "Flow, go straight to render")
+
+
+def cmd_overlays(a, cfg):
+    """Story look: --suggest writes a first draft of overlays.json from the transcript; without it, every
+    overlay's anchors are resolved against the transcript and printed (what pops when, while he says what)."""
+    sys.path.insert(0, str(ROOT))
+    import overlays as O
+    reel = reel_dir(a.name)
+    path = reel / "overlays.json"
+    words = words_of(reel)
+    if a.suggest:
+        if path.exists() and not a.force:
+            sys.exit(f"{path} exists; --force replaces it with a fresh draft")
+        draft = O.suggest(words)
+        save(reel, "overlays.json", draft)
+        print(f"    overlays draft: {len(draft)} in {path} (Claude rewrites it after reading the transcript)")
+        return
+    items = load(reel, "overlays.json", [])
+    try:
+        ovs = O.resolve(items, words, duration(cfg, source(reel)))
+    except ValueError as e:
+        sys.exit(f"overlays.json: {e}")
+    for ov in ovs:
+        print(f"  {ov['id']:>2} {ov['type']:9} {ov['at']:6.2f}-{ov['end']:6.2f}s  \"{said(reel, ov['at'], ov['end'])}\"")
+        for t, kind in O.pop_times(ov)[1:]:
+            print(f"       {kind:4} at {t:6.2f}s  \"{said(reel, t, t + 0.6)}\"")
+    opts = load(reel, "story.json", {})
+    print(f"  story.json: {opts or 'none (green = headline number + CTA, no boom, no music)'}")
 
 
 def cmd_repick(a, cfg):
@@ -399,13 +441,17 @@ def cmd_split(a, cfg):
 
 def render(reel, cfg, out, a=None):
     cmd = [cfg["python"], ROOT / "render.py", "--reel", reel, "--out", out]
+    if a is not None and getattr(a, "seconds", 0):
+        cmd += ["--seconds", str(a.seconds)]
+    if a is not None and getattr(a, "zones", False):
+        cmd += ["--zones"]
     if a is not None and getattr(a, "text", ""):
         cmd += ["--text", a.text, "--text-start", str(a.text_start), "--text-secs", str(a.text_secs)]
         if a.emoji:
             cmd += ["--emoji", a.emoji]
     log = run(cmd, quiet=True)
     print("\n".join("    " + ln.strip() for ln in log.splitlines()
-                    if re.search(r"leak|cut:|visual:|accent:|text:|wrote", ln)))
+                    if re.search(r"look:|leak|cut:|visual:|accent:|text:|story:|overlay |sfx:|music:|wrote", ln)))
 
 
 def check(cfg, src, out):
@@ -432,8 +478,9 @@ def cmd_preview(a, cfg):
     cmd_status(a, cfg)
     out = reel / f"{a.name} preview.mp4"
     print("rendering a preview (about 0.5 s per frame)")
-    render(reel, cfg, out)
-    check(cfg, source(reel), out)
+    render(reel, cfg, out, a)
+    if not a.seconds:
+        check(cfg, source(reel), out)
 
 
 def cmd_render(a, cfg):
@@ -452,12 +499,24 @@ def main():
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")   # ₹ in motion text vs the Windows console
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
+    p = sub.add_parser("cut")
+    p.add_argument("videos", nargs="+", help="his raw video, several raw takes, or a folder of them")
+    p.add_argument("--name")
+    p.add_argument("--drop", action="append", default=[], help='TAKE, TAKE@S-E or "a phrase" to leave out')
+    p.add_argument("--max-pause", type=float, default=0.35, help="pauses longer than this are cut (seconds)")
+    p.add_argument("--fps", type=float, default=0)
     p = sub.add_parser("prep")
     p.add_argument("video")
     p.add_argument("--text-cuts", required=True, choices=["yes", "no"],
                    help="motion graphic text in this video? ASK HIM every time, never assume")
     p.add_argument("--name")
     p.add_argument("--only", default="")
+    p.add_argument("--look", default="story", choices=["story", "v2"],
+                   help="story (default since 10-20): his inspo's storytelling edit; v2: the 10-18 look")
+    p = sub.add_parser("overlays")
+    p.add_argument("name")
+    p.add_argument("--suggest", action="store_true", help="write a first draft from the transcript")
+    p.add_argument("--force", action="store_true")
     p = sub.add_parser("repick")
     p.add_argument("name")
     p.add_argument("--only", required=True)
@@ -477,6 +536,8 @@ def main():
     p.add_argument("name")
     p = sub.add_parser("preview")
     p.add_argument("name")
+    p.add_argument("--seconds", type=float, default=0, help="only the first N seconds")
+    p.add_argument("--zones", action="store_true", help="draw the safe-zone map (layout check)")
     p = sub.add_parser("render")
     p.add_argument("name")
     p.add_argument("--text", default="")
@@ -486,7 +547,7 @@ def main():
     p.add_argument("--no-deliver", action="store_true")
     a = ap.parse_args()
     cfg = config()
-    {"prep": cmd_prep, "repick": cmd_repick, "visual": cmd_visual, "status": cmd_status, "map": cmd_map,
+    {"cut": cmd_cut, "overlays": cmd_overlays, "prep": cmd_prep, "repick": cmd_repick, "visual": cmd_visual, "status": cmd_status, "map": cmd_map,
      "split": cmd_split, "preview": cmd_preview, "render": cmd_render}[a.cmd](a, cfg)
 
 

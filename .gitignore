@@ -7,3 +7,5 @@ sfx/*.wav
 __pycache__/
 # fetched by setup.ps1 (OFL fonts, pinned Fontsource 5.3.0)
 fonts/**/*.ttf
+# his music tracks for story reels: his files, never in a repo
+music/
