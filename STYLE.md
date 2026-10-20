@@ -50,6 +50,12 @@ classic TikTok captions, the storytelling style. Everything below was measured f
   covers his hair, shrinking to fit (down to 72%) so it never reaches his brows. The render log says which
   overlays cover hair.
 - Never invent a claim: overlay text is what he says, or a plain label of it.
+- **Real images, his call 10-20:** a wall of text cards reads as filler, especially in the first 10 s. Claude asks
+  him for images where a real picture beats a card (a news headline, the chart he talks about, the thing he
+  names): what each one shows, a Google search to find it, and the word it lands on. He saves them to
+  `Downloads\<name> images\`; they go into `reels\<name>\images\` and in as `image` overlays (rounded
+  corners, soft shadow, the same pop, above his head, shrinking down to 45% to stay off his brows). Wide
+  pictures work best; a tall one sits on his head like a hat. Never show what the CTA withholds.
 
 ## Picture
 - **Punch-in on every jump cut:** the framing alternates 100% / 115% (108% on a close-up) at each cut, and at

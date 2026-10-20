@@ -123,7 +123,7 @@ def plan(reel, words, dur, fps, ff, scene, video, log=print, music=""):
         cap_y[take] = min(CAP_Y_MAX, max(CAP_Y_MIN, (float(np.median(chins)) + 0.02) if chins else CAP_Y_MIN))
     log("  story: captions at " + ", ".join(f"{t[-6:]} {y:.3f}" for t, y in cap_y.items()))
     # overlays
-    ovs = O.resolve(load_json(reel / "overlays.json", []), words, dur)
+    ovs = O.resolve(load_json(reel / "overlays.json", []), words, dur, base=reel)
     places = {}
     for ov in ovs:
         places[ov["id"]] = place(ov, punch, log)
@@ -158,7 +158,7 @@ def pick_music(choice, log):
 def place(ov, punch, log):
     """Where an overlay goes: at the top of the overlay band (15% down, never into the app's top zone), above his
     head on every beat it spans. On a close-up without that room it covers his hair and, if it would reach his
-    brows, shrinks (to 72%): never his brows, eyes or anything lower."""
+    brows, shrinks (a card to 72%, a picture to 45%): never his brows, eyes or anything lower."""
     span = [p for p in punch if p["t0"] < ov["end"] and p["t1"] > ov["at"] and p["face"]]
     fw, fh = O.full_size(ov)
     hair = min((p["face"]["hair"] for p in span), default=0.30) - 0.012
@@ -169,9 +169,9 @@ def place(ov, punch, log):
     else:
         y = max(TOP_SAFE * H, hair * H - fh)
         if y + fh > brows * H:
-            scale = max(0.72, min(1.0, (brows * H - TOP_SAFE * H) / fh))
+            scale = max(0.45 if ov["type"] == "image" else 0.72, min(1.0, (brows * H - TOP_SAFE * H) / fh))
             y = TOP_SAFE * H
-    wide = ov["type"] in ("chat", "comments", "progress")
+    wide = ov["type"] in ("chat", "comments", "progress", "image")
     x = (W - fw * scale) / 2 if wide else 40
     note = ""
     if y + fh * scale > hair * H + 2:

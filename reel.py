@@ -327,7 +327,7 @@ def cmd_overlays(a, cfg):
         return
     items = load(reel, "overlays.json", [])
     try:
-        ovs = O.resolve(items, words, duration(cfg, source(reel)))
+        ovs = O.resolve(items, words, duration(cfg, source(reel)), base=reel)
     except ValueError as e:
         sys.exit(f"overlays.json: {e}")
     for ov in ovs:

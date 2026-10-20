@@ -20,10 +20,25 @@ Read `reels\<name>\cut report.txt`: what was cut and why, and every take's words
 know (alternative hooks, a take that doesn't belong, a phrase) and re-run with `--drop TAKE` or
 `--drop "phrase"`. The result, `reels\<name>\cut.mp4`, goes through step 1; its transcript comes from the cut.
 
-## 1. He sends a video: ask first
+## 1. Ask for everything first, in one message (his call 10-21)
 
-Ask him one question before anything else: **"Do you want motion graphic text in this video?"**
-Never assume, never reuse the last answer. Prep refuses to run without it.
+Before building anything, read what he says: the cut's transcript, or for an edited video a quick Whisper
+pass (`<whisper_python from config.json> transcribe.py "<video>" "<scratch>.json"`). Then send **one** message
+with every ask, so he can gather it all at once. Build only after he answers; then render once.
+- **Motion text:** "Do you want motion graphic text in this video?" Never assume, never reuse the last
+  answer. Prep refuses to run without it.
+- **Hook line for the first 3 s:** the on-screen text over his opening (`render --text "..." --text-start 0
+  --text-secs 3`). Offer 2 or 3 options drawn from his own hook; he picks one or writes his own.
+- **Images:** a table: #, the word it lands on (with its second), what it shows, a Google search to find it.
+  He saves them as 1, 2, 3... in `Downloads\<name> images\`. Never a wall of text cards, above all in the
+  first 10 s. Ask for wide pictures, and nothing that gives away what the CTA withholds.
+- **Anything else the edit needs:** screenshots or screen recordings of what he shows or names, a different
+  music track, takes that look missing or doubled (check Downloads for the same timestamps and his
+  `_1.mp4` phone rough edit), words Whisper may have misheard.
+
+When they arrive, check each image against its line before using it. Watch for a headline that says the
+opposite of his line, a green "↑" badge on a "down" line, or his mouse hover left in the shot. Ask again
+for anything that doesn't fit.
 
 ## 2. Prep
 
@@ -47,6 +62,10 @@ It transcribes, finds the exact shot cuts, picks motion text (if yes), finds a m
   punchline word (`"green"` only to override the headline number and CTA; `"music"` only for a different
   track than his default, or `false` if he wants this one without). Check
   with `py -3.14 reel.py overlays "<name>"` and `reel.py preview "<name>" --seconds 8 --zones`.
+- **Images** (asked for in step 1): `{"type": "image", "at": "<word>", "src": "images/1.png", "end": "+5"}`.
+  Copy his files into `reels\<name>\images\`. `"end": "+5"` holds one picture until the next overlay pops in.
+- **Hook line:** his `--text` sits 13% down, inside the overlay band, so start the first overlay after the
+  hook text is gone (3 s), and look at those frames.
 - **No B-roll, ever.** No cover (thumbnail) and no caption pack either (his call 10-18).
 
 ## 4. Hand over
@@ -56,7 +75,7 @@ Tell him, briefly:
   make it in `flow prompts.txt`. If nothing is needed, say so and go straight to step 6.
 - any words you're unsure Whisper heard right.
 
-Ask whether he wants on-screen text.
+Everything else (hook line, images, other assets) was asked for in step 1, so don't ask again here.
 
 ## 5. "Flow clips are in"
 

@@ -19,12 +19,16 @@ appear later (a message, a step, a pill). An anchor is seconds (12.4), a word or
   toast     a small reply pill: {"text", "sign", "icon": "claude"|"bookmark"}
   progress  a working card: {"title", "file", "states": [{"text", "pct", "at"}], "done_at"}
   list      plain lines of text, no card: {"lines": ["0:18 Step one", ...]}
+  image     a real picture he sends (a headline, a chart): {"src": "images/1.png" (from the reel folder),
+            "max_h": 560}; fitted inside 1000 x max_h, rounded corners, shrinks further than a card to stay
+            off his brows
 
 Each pop: 0.14 s in (opacity, blur 8 -> 0, scale 94% -> 100%, rises 12 px), 0.14 s out, measured frame by
 frame on his inspo. Inner parts pop the same way, smaller. Everything is drawn at 2x and scaled down.
 """
 import math, re
 from functools import lru_cache
+from pathlib import Path
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
@@ -35,6 +39,7 @@ POP_IN, POP_OUT = 0.14, 0.14
 PART_IN = 0.16
 BANNER_UP = 30              # the notification's top sits this far above the comments sheet, covering its title
 CARD_W = 1000               # 40 px either side on a 1080 frame, like his overlay section
+IMG_MAX_H = 560             # an image's tallest before placing; place() shrinks it off his brows
 TINT = (20, 24, 44)         # the frosted card's dark blue-grey
 CLAUDE_ORANGE = (217, 119, 87)
 CREAM = (245, 236, 226)
@@ -97,11 +102,19 @@ def find(words, spec, after, edge="s"):
 INNER = {"chat": ("messages",), "steps": ("steps",), "pills": ("items",), "progress": ("states",)}
 
 
-def resolve(items, words, dur):
-    """overlays.json items -> the same items with every anchor in seconds ("at", "end", inner "at"s)."""
+def resolve(items, words, dur, base=None):
+    """overlays.json items -> the same items with every anchor in seconds ("at", "end", inner "at"s), and an
+    image's "src" made absolute from `base` (the reel folder)."""
     out, after = [], 0.0
     for k, ov in enumerate(items):
         ov = {**ov, "id": k}
+        if ov["type"] == "image":
+            src = Path(ov.get("src", ""))
+            if base is not None and not src.is_absolute():
+                src = Path(base) / src
+            if not src.is_file():
+                raise ValueError(f"overlay {k} (image): {src} not found")
+            ov["src"] = str(src)
         ov["at"] = find(words, ov["at"], after)
         after = ov["at"]
         last = ov["at"]
@@ -638,8 +651,31 @@ def paint_list(ov, t):
     return out, None, None
 
 
+@lru_cache(maxsize=16)
+def picture(src, max_h):
+    """His picture at SS scale, fitted inside CARD_W x max_h (aspect kept), rounded corners, hairline rim."""
+    im = Image.open(src)
+    im.load()
+    im = im.convert("RGBA")
+    k = min(CARD_W / im.width, max_h / im.height)
+    w, h = max(1, round(im.width * k)), max(1, round(im.height * k))
+    im = im.resize((S(w), S(h)), Image.LANCZOS)
+    mask = Image.new("L", im.size, 0)
+    rrect(ImageDraw.Draw(mask), (0, 0, w, h), 26, 255)
+    im.putalpha(Image.fromarray(np.minimum(np.asarray(im.getchannel("A")), np.asarray(mask))))
+    rim = Image.new("RGBA", im.size, (0, 0, 0, 0))
+    rrect(ImageDraw.Draw(rim), (0, 0, w, h), 26, None, outline=(255, 255, 255, 56), width=1.5)
+    im.alpha_composite(rim)
+    return im
+
+
+def paint_image(ov, t):
+    return picture(ov["src"], int(ov.get("max_h", IMG_MAX_H))), None, None
+
+
 PAINT = {"chat": paint_chat, "file": paint_file, "steps": paint_steps, "score": paint_score, "pills": paint_pills,
-         "comments": paint_comments, "toast": paint_toast, "progress": paint_progress, "list": paint_list}
+         "comments": paint_comments, "toast": paint_toast, "progress": paint_progress, "list": paint_list,
+         "image": paint_image}
 
 
 def full_size(ov):
@@ -697,7 +733,7 @@ def draw(frame, t, ov, place):
         layer.putalpha(sh.filter(ImageFilter.GaussianBlur(16)))
         box = (int(x), int(y), int(x) + cw_i, int(y) + ch_i)
         layer.alpha_composite(glass(frame, box, mask, style), (m, m))
-    elif ov["type"] == "comments":
+    elif ov["type"] in ("comments", "image"):
         sh = Image.new("L", layer.size, 0)
         sh.paste(content.getchannel("A").point(lambda v: int(v * 0.45)), (m, m + 10))
         layer.putalpha(sh.filter(ImageFilter.GaussianBlur(18)))
