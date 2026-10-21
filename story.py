@@ -18,9 +18,18 @@ jump cut, anchored on his chin so the captions never land on his mouth.
 Music is ON for every story reel (his call 10-20): the track in the reel-editor "music" folder (the first by name),
 25% under the hook, then 10%. No track there yet means no music, and the render says so.
 
+His notes on the first story reel (10-22): "the subtitles clash with my mouth", "move my video slightly higher"
+and "each video needs a small transition, a light leak or a bright white effect". So the face detector's chin
+(it lands on his lower lip, the real chin is about 4% lower) gets CAP_GAP under it, the picture is lifted when
+that would push the captions past 77.5% (his face sits low in his selfie framing; the band it leaves at the
+bottom, under the app's caption and handle, is a dark blurred mirror of his shirt), and every jump cut gets a
+small light leak where one take hands over to the next.
+
 Per-reel choices live in reels/<name>/story.json (all optional):
-  {"green": ["10 minutes", "Comment Claude"], "boom": "skip", "music": "C:\\\\path\\\\other track.mp3"}
-  "music": false leaves this one reel without music.
+  {"green": ["10 minutes", "Comment Claude"], "boom": "skip", "music": "C:\\\\path\\\\other track.mp3",
+   "lift": 0.05, "transition": "flash"}
+  "music": false leaves this one reel without music. "lift": a fraction of the height (0 = never lifted).
+  "transition": "leak" (default), "flash" (a quick bright white) or false (hard cuts).
 """
 import json, math
 from functools import lru_cache
@@ -38,6 +47,12 @@ WHITE, GREEN = (255, 255, 255), (9, 243, 28)
 CAP_MAXW = 720                    # the right-hand buttons start 180 px in from the edge between 50% and 80%
 CAP_SHADOW = (135, 4, 2)          # alpha, blur, px down: a soft dark edge, no outline, no box
 CAP_Y_MIN, CAP_Y_MAX = 0.55, 0.775
+CAP_GAP = 0.065                   # caption middle under the detected chin: clears his real chin, not his mouth
+LIFT_MAX = 0.08                   # the most the picture is lifted to make room for that
+TRANSITION, TRANS_SPAN = "leak", 0.2   # a small light leak either side of a take change (v2's runs 0.32 s)
+LEAK_PEAK = 0.38                  # at most 38% of the glow (v2: 55%), so it reads as a small transition
+DISSOLVE, ZOOM_EASE = 0.2, 0.3    # at a take change: the old frame fades out, the framing glides to the new one
+DISSOLVE_IN = 0.35
 TOP_SAFE = OVERLAY_TOP = 0.15     # the top 15% is the app's (his zone map); nothing of ours above it
 PUNCH_WIDE, PUNCH_CLOSE = 1.15, 1.08
 CLOSE_UP_W = 0.65                 # a face wider than this fraction of the frame is a close-up
@@ -106,6 +121,16 @@ def zoomed(f, z, anchor_y):
 def plan(reel, words, dur, fps, ff, scene, video, log=print, music=""):
     opts = load_json(reel / "story.json", {})
     pcs = pieces_of(reel, video, dur, fps, ff, scene)
+    # the lift: enough that the lowest-framed take's captions still fit under his chin (or story.json's)
+    chins = sorted(f["chin"] for _, _, _, f in pcs if f and f["chin"] < 0.9)
+    need = (chins[int(0.9 * (len(chins) - 1))] + CAP_GAP - CAP_Y_MAX + 0.005) if chins else 0.0
+    lift = float(opts.get("lift", min(LIFT_MAX, max(0.0, round(need, 3)))))
+    if lift:
+        pcs = [(a, b, k, lifted(f, lift)) for a, b, k, f in pcs]
+        log(f"  story: picture lifted {lift:.3f} ({lift * H:.0f} px) so the captions clear his chin")
+    # on the frame grid: cut.json keeps 4 decimals, and 9.9667 > 299/30 gave a new take's first frame the old
+    # take's zoom (a one-frame flicker on the cut, the "brief stutter" he saw 10-22)
+    pcs = [(round(a * fps) / fps, round(b * fps) / fps, k, f) for a, b, k, f in pcs]
     bts = beats(pcs, words)
     # punch-ins: alternate 1.00 / P, anchored on his chin (captions sit just below it)
     punch = []
@@ -116,11 +141,16 @@ def plan(reel, words, dur, fps, ff, scene, video, log=print, music=""):
         ax = f["cx"] if f else 0.5
         ay = min(f["chin"], 0.8) if f else 0.62
         punch.append({"t0": a, "t1": b, "z": z, "ax": ax, "ay": ay, "face": zoomed(f, z, ay), "take": pcs[k][2]})
+    # where one take hands over to the next, the framing glides from the old one instead of jumping (his note
+    # 10-22: "the clip changes are very abrupt, make them smoother and more natural")
+    for q, p in zip(punch, punch[1:]):
+        if p["take"] != q["take"]:
+            p["from"] = (q["z"], q["ax"], q["ay"])
     # captions: one height per take, just under his chin, inside the safe band
     cap_y = {}
     for take in dict.fromkeys(p["take"] for p in punch):
         chins = [p["face"]["chin"] for p in punch if p["take"] == take and p["face"]]
-        cap_y[take] = min(CAP_Y_MAX, max(CAP_Y_MIN, (float(np.median(chins)) + 0.02) if chins else CAP_Y_MIN))
+        cap_y[take] = min(CAP_Y_MAX, max(CAP_Y_MIN, (float(np.median(chins)) + CAP_GAP) if chins else CAP_Y_MIN))
     log("  story: captions at " + ", ".join(f"{t[-6:]} {y:.3f}" for t, y in cap_y.items()))
     # overlays
     ovs = O.resolve(load_json(reel / "overlays.json", []), words, dur, base=reel)
@@ -135,8 +165,20 @@ def plan(reel, words, dur, fps, ff, scene, video, log=print, music=""):
         log(f"  story: vine boom on \"{opts['boom']}\" at {boom:.2f}s")
     pops = sorted(pt for ov in ovs for pt in O.pop_times(ov))
     music = music or pick_music(opts.get("music"), log)     # a track given to render.py wins
+    trans = opts.get("transition", TRANSITION) or None
     return {"punch": punch, "cap_y": cap_y, "overlays": ovs, "places": places, "green": green,
-            "boom": boom, "pops": pops, "music": music}
+            "boom": boom, "pops": pops, "music": music, "lift": lift,
+            "transition": trans, "jumpcuts": [p[0] for q, p in zip(pcs, pcs[1:]) if p[2] != q[2]]}
+
+
+def lifted(f, lift):
+    """A face's lines after the picture moves up by `lift` (a fraction of the height)."""
+    if not f:
+        return None
+    g = dict(f)
+    for k in ("hair", "top", "eyes", "chin", "cy"):
+        g[k] = f[k] - lift
+    return g
 
 
 def pick_music(choice, log):
@@ -164,7 +206,9 @@ def place(ov, punch, log):
     hair = min((p["face"]["hair"] for p in span), default=0.30) - 0.012
     brows = min((p["face"]["top"] + 0.10 * (p["face"]["chin"] - p["face"]["top"]) for p in span), default=0.4) - 0.008
     scale = 1.0
-    if OVERLAY_TOP * H + fh <= hair * H:
+    if ov.get("y") is not None:          # pinned by Claude, e.g. just under his own top text in the first 3 s
+        y = max(TOP_SAFE * H, ov["y"] * H)
+    elif OVERLAY_TOP * H + fh <= hair * H:
         y = OVERLAY_TOP * H
     else:
         y = max(TOP_SAFE * H, hair * H - fh)
@@ -185,15 +229,56 @@ def place(ov, punch, log):
 
 # ---------------------------------------------------------------- per frame
 
-def punch_frame(img, t, sp):
-    p = next((p for p in sp["punch"] if p["t0"] <= t < p["t1"]), None)
-    if not p or p["z"] <= 1.0005:
+def lift_frame(img, lift):
+    """Move the picture up by `lift`; the band left at the bottom (the app's caption and handle zone) gets a
+    dark, blurred mirror of the rows above it, so it reads as his shirt in shadow, not a black bar."""
+    dy = int(round(lift * H))
+    if dy <= 0:
         return img
-    z = p["z"]
+    out = Image.new("RGB", (W, H))
+    out.paste(img.crop((0, dy, W, H)), (0, 0))
+    band = img.crop((0, H - dy, W, H)).transpose(Image.Transpose.FLIP_TOP_BOTTOM)
+    band = band.resize((W // 8, max(1, dy // 8)), Image.BILINEAR).filter(ImageFilter.GaussianBlur(3))
+    band = band.resize((W, dy), Image.BILINEAR).point(lambda v: int(v * 0.45))
+    out.paste(band, (0, H - dy))
+    return out
+
+
+def punch_frame(img, t, sp):
+    if sp.get("lift"):
+        img = lift_frame(img, sp["lift"])
+    p = next((p for p in sp["punch"] if p["t0"] <= t < p["t1"]), None)
+    if not p:
+        return img
+    z, ax, ay = p["z"], p["ax"], p["ay"]
+    if p.get("from") and t - p["t0"] < ZOOM_EASE:
+        k = smoother((t - p["t0"]) / ZOOM_EASE)
+        z0, ax0, ay0 = p["from"]
+        z, ax, ay = z0 + (z - z0) * k, ax0 + (ax - ax0) * k, ay0 + (ay - ay0) * k
+    if z <= 1.0005:
+        return img
     bw, bh = W / z, H / z
-    x0 = min(max(0.0, p["ax"] * W - p["ax"] * bw), W - bw)
-    y0 = min(max(0.0, p["ay"] * H - p["ay"] * bh), H - bh)
+    x0 = min(max(0.0, ax * W - ax * bw), W - bw)
+    y0 = min(max(0.0, ay * H - ay * bh), H - bh)
     return img.resize((W, H), Image.BICUBIC, box=(x0, y0, x0 + bw, y0 + bh))
+
+
+def smoother(u):
+    u = min(1.0, max(0.0, u))
+    return u * u * u * (u * (6 * u - 15) + 10)
+
+
+def dissolve(img, t, sp):
+    """A short soft dissolve where one take hands over to the next: the last frame of the outgoing take fades
+    out over the first DISSOLVE seconds of the new one, so the change reads as a breath, not a jump."""
+    c = next((c for c in sp.get("smooth_cuts", []) if c - 1e-6 <= t < c + DISSOLVE), None)
+    if c is None:
+        sp["_prev"] = img
+        return img
+    if sp.get("_hold_at") != c:
+        sp["_hold_at"], sp["_hold"] = c, sp.get("_prev", img)
+    # the new take is already 35% in on its first frame, so the change never reads as a frozen frame
+    return Image.blend(sp["_hold"], img, DISSOLVE_IN + (1 - DISSOLVE_IN) * smoother((t - c) / DISSOLVE))
 
 
 def caption_text(ch):

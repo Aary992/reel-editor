@@ -29,6 +29,7 @@ import assemble as A        # noqa: E402  (stretch-by-stretch transcription, env
 W, H = 1080, 1920
 VIDEO_EXT = {".mp4", ".mov", ".m4v", ".mkv"}
 HEAD, TAIL = 0.06, 0.09   # breathing room kept before the first and after the last word of each piece
+EDGE_PAD = 0.05           # kept either side of his voice once a piece's edges are trimmed to it
 SENT_GAP = 0.7            # a pause this long ends a sentence even without punctuation
 
 
@@ -181,10 +182,39 @@ def pieces(clips, cut, max_pause, envs):
             s, e = ws[r[0]]["s"], ws[r[-1]]["e"]
             prev_e = ws[r[0] - 1]["e"] if r[0] > 0 else 0.0
             next_s = ws[r[-1] + 1]["s"] if r[-1] + 1 < len(ws) else c["duration"]
-            a = A.quiet_point(env, max(prev_e, s - 0.25), s, s - HEAD)
-            b = A.quiet_point(env, e, min(next_s, e + 0.35), e + TAIL)
+            # a word cut out of connected speech ("it literally does") leaves no gap to cut in: take the
+            # quietest moment around the boundary instead of padding into the dropped word
+            if r[0] > 0 and prev_e > s - 0.03:
+                a = A.quiet_point(env, s - 0.03, s + 0.04, s)
+            else:
+                a = A.quiet_point(env, max(prev_e, s - 0.25), s, s - HEAD)
+            if r[-1] + 1 < len(ws) and next_s < e + 0.03:
+                b = A.quiet_point(env, e - 0.04, e + 0.03, e)
+            else:
+                b = A.quiet_point(env, e, min(next_s, e + 0.35), e + TAIL)
+            a, b = tighten(env, a, b, s, e)
             out.append((ci, max(0.0, a), min(c["duration"], max(b, e + 0.02)), r))
     return out
+
+
+def tighten(env, a, b, s, e):
+    """Whisper's word edges run loose, so a piece can open or close on up to 0.25 s of room tone; at every
+    join that adds up to the dead space he hears (10-22). Trim each edge to where his voice really starts and
+    stops (the 10 ms envelope rising above the take's room tone), keeping EDGE_PAD for soft consonants."""
+    live = env[env > -90]                       # leave out the digital silence some takes open with
+    floor = float(np.percentile(live, 10)) if len(live) else -60.0
+    voice = float(np.median(live[live > floor + 10])) if (live > floor + 10).any() else floor + 20
+    thr = max(floor + 10, voice - 22)
+    i0, i1 = int(a * 100), int(min(s + 0.3, e) * 100)
+    # his voice starts where the envelope stays up for 30 ms (a click or a rustle in the room doesn't)
+    on = next((i for i in range(i0, max(i0, i1)) if (env[i:i + 3] > thr).all()), None)
+    if on is not None:
+        a = max(a, on / 100 - EDGE_PAD)
+    j0, j1 = int(max(e - 0.3, s) * 100), int(b * 100)
+    off = next((j for j in range(min(j1, len(env) - 1), j0, -1) if env[j] > thr), None)
+    if off is not None:
+        b = min(b, (off + 1) / 100 + EDGE_PAD)
+    return a, b
 
 
 def crop_filter(c):

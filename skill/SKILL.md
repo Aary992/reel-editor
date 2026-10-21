@@ -7,8 +7,14 @@ description: "Aarit's Reel engine. Use whenever Aarit sends or points to a video
 
 Engine: `C:\Users\Aaru\Documents\reel-editor` on the laptop, `D:\My Data\Documents\cc\reel-editor` on the
 PC. Run `git pull` there first. Read `README.md`, `STYLE.md` and `FLOW.md` before the first run in a session.
-Python is `py -3.14`. The look is **story** (default since 10-20) unless he asks for v2. Never change a look
-unless he asks.
+Python is `py -3.14`. The look is **story** (default since 10-20, his approved style since 10-22) unless he
+asks for v2. Never change a look unless he asks.
+
+**His approved story style (10-22, "good i like this style"): the engine does all of it by default, don't undo
+it:** no dead space (each clip trimmed to where his voice starts and stops), captions under his real chin and
+never on his mouth (the picture lifts up to 8% to make room), and where one clip hands over to the next a
+small amber light leak, a 0.2 s soft dissolve and a 0.3 s zoom glide (cuts inside one clip stay hard, with the
+punch-in). Details in STYLE.md.
 
 ## 0. Raw footage: cut it first
 
@@ -19,6 +25,11 @@ py -3.14 reel.py cut "<take 1>" "<take 2>" ... --name "<short name>"
 Read `reels\<name>\cut report.txt`: what was cut and why, and every take's words. Drop what the rules can't
 know (alternative hooks, a take that doesn't belong, a phrase) and re-run with `--drop TAKE` or
 `--drop "phrase"`. The result, `reels\<name>\cut.mp4`, goes through step 1; its transcript comes from the cut.
+- **Order:** the cut sorts takes by file name. When his script wants another order, copy the takes into
+  `reels\<name>\takes\` as `01 <take>.mp4`, `02 ...` and cut that folder.
+- **Fillers:** drop a filler ("literally") only where it starts a clip ("And literally all you need" becomes
+  "All you need"). Cut out of the middle of a short clip, it leaves a half-second piece that reads as a
+  stutter (his note 10-22). Run Whisper on the new cut to make sure no word fragment survived.
 
 ## 1. Ask for everything first, in one message (his call 10-21)
 
@@ -26,7 +37,9 @@ Before building anything, read what he says: the cut's transcript, or for an edi
 pass (`<whisper_python from config.json> transcribe.py "<video>" "<scratch>.json"`). Then send **one** message
 with every ask, so he can gather it all at once. Build only after he answers; then render once.
 - **Motion text:** "Do you want motion graphic text in this video?" Never assume, never reuse the last
-  answer. Prep refuses to run without it.
+  answer. Prep refuses to run without it. If he wants one of each, make two reels from the one cut: copy
+  `cut.mp4`, `cut.json`, `words.json` and `fixes.json` into `reels\<name> motion\` and prep that copy's
+  `cut.mp4` with `--text-cuts yes` (story.py only uses the cut's faces when the video is the reel's own cut).
 - **Hook line for the first 3 s:** the on-screen text over his opening (`render --text "..." --text-start 0
   --text-secs 3`). Offer 2 or 3 options drawn from his own hook; he picks one or writes his own.
 - **Images:** a table: #, the word it lands on (with its second), what it shows, a Google search to find it.
@@ -37,8 +50,9 @@ with every ask, so he can gather it all at once. Build only after he answers; th
   `_1.mp4` phone rough edit), words Whisper may have misheard.
 
 When they arrive, check each image against its line before using it. Watch for a headline that says the
-opposite of his line, a green "↑" badge on a "down" line, or his mouse hover left in the shot. Ask again
-for anything that doesn't fit.
+opposite of his line, a green "↑" badge on a "down" line, his mouse hover left in the shot, or someone else's
+name or folder path in a screenshot he grabbed off Google (crop or blank it, and tell him). Ask again for
+anything that doesn't fit.
 
 ## 2. Prep
 
@@ -64,15 +78,20 @@ It transcribes, finds the exact shot cuts, picks motion text (if yes), finds a m
   with `py -3.14 reel.py overlays "<name>"` and `reel.py preview "<name>" --seconds 8 --zones`.
 - **Images** (asked for in step 1): `{"type": "image", "at": "<word>", "src": "images/1.png", "end": "+5"}`.
   Copy his files into `reels\<name>\images\`. `"end": "+5"` holds one picture until the next overlay pops in.
-- **Hook line:** his `--text` sits 13% down, inside the overlay band, so start the first overlay after the
-  hook text is gone (3 s), and look at those frames.
+- **Open on an overlay (his call 10-22):** his first line gets one too, pinned just under his hook text with
+  `"y": 0.185` and ending with it (`"end": "+3.0"`), e.g. a Claude progress card that fills up and turns to
+  "Done" on his words. His `--text` sits 13% down, inside the overlay band, so every other overlay starts
+  after the hook text is gone (3 s). Look at those frames.
+- **Step trackers:** give every step an `"at"`. A step without one lights up when the tracker pops in and
+  marks all the earlier steps done.
 - **No B-roll, ever.** No cover (thumbnail) and no caption pack either (his call 10-18).
 
 ## 4. Hand over
 
 Tell him, briefly:
-- what to make in Flow: the folder `Downloads\<name> Flow\`, how many clips, and that each one says how to
-  make it in `flow prompts.txt`. If nothing is needed, say so and go straight to step 6.
+- what to make in Flow: the folder `Downloads\<name> Flow\`, how many clips, and **every prompt pasted in
+  chat** as a copyable block, with what to save it as and the word it lands on (he asked "where's the flow
+  prompt?" when he only got the file path). If nothing is needed, say so and go straight to step 6.
 - any words you're unsure Whisper heard right.
 
 Everything else (hook line, images, other assets) was asked for in step 1, so don't ask again here.
@@ -97,7 +116,9 @@ py -3.14 reel.py render "<name>" [--text "..." --text-start S --text-secs 1-4]
 About 0.5 s per frame (v2) or 0.15 s (story), so run it in the background. It checks frame count and
 loudness and delivers `<name> final.mp4` to Downloads. Then look at frames inside every Flow window, around a
 few cuts and (story) at every overlay's pop and full state, before you say it's done: the render log flags
-any overlay that covers his hair or face. That's the whole delivery: no cover, no caption pack.
+any overlay that covers his hair or face. At a few clip changes pull the exact frames
+(`select='between(n,A,B)'`): the dissolve has to start on the cut frame, with no frame of the old zoom on the
+new clip. That's the whole delivery: no cover, no caption pack.
 
 ## Raw clips instead of an edited video (experiment, not in the engine yet)
 

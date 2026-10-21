@@ -1,9 +1,10 @@
 # Aarit's Reel looks
 
-Two looks. New reels get **story** (the default since 10-20, his ask); **v2** (locked 10-18) is one flag away:
+Two looks. New reels get **story** (the default since 10-20, his ask; his approved style since 10-22, "good i
+like this style"); **v2** (locked 10-18) is one flag away:
 `reel.py prep ... --look v2`. Don't change either unless he asks.
 
-# The story look (NEW 2026-10-20, from his inspo; awaiting his verdict on the demo)
+# The story look (2026-10-20, from his inspo; APPROVED 10-22 with his notes on the "claude edits" reel)
 
 He sent two Reels by a creator who edits with Claude ("Claude just changed video editing forever" and the
 "beginner tutorial") and asked for exactly that edit. The creator's own prompt, read off his on-screen cards:
@@ -21,6 +22,10 @@ classic TikTok captions, the storytelling style. Everything below was measured f
   silence, and every pause over 0.35 s (his inspo never leaves more than about 0.35 s between words).
 - Claude reads `cut report.txt` and drops what the rules can't know: alternative hooks, a whole take, a
   range, a phrase (`--drop`). Every cut lands on the quietest 10 ms with a 12 ms audio fade.
+- **Tight joins (his note 10-22, "a lot of dead space" in the first 10 s):** Whisper's word edges run loose, so
+  each piece is trimmed to where his voice really starts and stops (the envelope held 30 ms above the take's
+  room tone), keeping 0.05 s either side. A word dropped out of connected speech ("it literally does") is cut
+  at the quietest moment within a few hundredths of the boundary, never padded into the dropped word.
 - The cut's transcript comes from the takes (stretch by stretch), moved onto the cut's clock, so prep doesn't
   re-transcribe (that lost punctuation and heard "Claude" as "clod").
 
@@ -33,7 +38,12 @@ classic TikTok captions, the storytelling style. Everything below was measured f
   ("Comment X"). Override with `"green": [...]` in `story.json`.
 - Centred, inside 720 px (the like/comment/save/share column starts 180 px from the right between 50% and 80%).
 - Height: at chin level, like his (his sit at 55% on his framing, right on the chin line). On Aarit's
-  framing that means just under his chin, one height per take, kept between 55% and 77.5%.
+  framing that means just under his chin, one height per take, kept between 55% and 77.5%. **Never on his
+  mouth (his note 10-22):** the face detector's chin lands on his lower lip, so captions sit 6.5% under it.
+- **The lift (his note 10-22, "move my video slightly higher"):** his selfie framing puts his chin near 77%,
+  where captions can't follow, so the picture moves up just enough for the lowest-framed take (at most 8%;
+  his first story reel: 109 px). The band left at the bottom, under the app's caption and handle, is a dark
+  blurred mirror of his shirt. `"lift": 0` in `story.json` turns it off.
 
 ## Overlays: real app UI above his head
 - Frosted dark-glass cards drawn like the apps: a Claude chat card (header, his message bubbles with a file or
@@ -60,7 +70,15 @@ classic TikTok captions, the storytelling style. Everything below was measured f
 ## Picture
 - **Punch-in on every jump cut:** the framing alternates 100% / 115% (108% on a close-up) at each cut, and at
   a sentence start inside any piece longer than 4 s, so the rhythm is a change every 2 to 4 s like his.
-  Anchored on his chin, so the captions under it stay clear. Hard cuts: no light leak, no transition.
+  Anchored on his chin, so the captions under it stay clear.
+- **A small light leak where one take hands over to the next (his note 10-22):** v2's glow, smaller: 0.2 s
+  either side, at most 38%, the colour rotating per video like v2's. Cuts inside one take stay hard (just the
+  punch-in). `"transition": "flash"` in `story.json` swaps it for a quick bright white, `false` for hard cuts.
+- **Smooth, not abrupt (his second note 10-22):** at the same take changes the last frame of the old take
+  dissolves out over 0.2 s (the new take already 35% in on its first frame, so nothing reads as frozen), and
+  the framing glides from the old take's zoom to the new one over 0.3 s instead of jumping. Beats and cuts sit
+  on the frame grid: cut.json's rounded times once gave a new take's first frame the old zoom, a one-frame
+  flicker he saw as a stutter.
 - The light grade from v2 (saturation +7%, contrast +4%, a touch warmer).
 
 ## Zones (`reel.py preview NAME --zones` draws the map)
@@ -85,8 +103,8 @@ classic TikTok captions, the storytelling style. Everything below was measured f
 ## What the story look changes from v2 (his ask, 10-20)
 Captions plain white and still instead of bold blur-in with rotating colours; one green accent instead of
 seven; app UI overlays (code-drawn) where v2 had none; punch-ins on cuts where v2 had a slow 6% drift and
-"never a punch-in"; hard cuts instead of the light-leak glow; a music bed under every reel (v2: no music,
-ever). No B-roll, no cover, no caption pack: unchanged.
+"never a punch-in"; a smaller light leak, only where takes change (hard cuts until 10-22); a music bed under
+every reel (v2: no music, ever). No B-roll, no cover, no caption pack: unchanged.
 
 # The v2 look (LOCKED 2026-10-18)
 

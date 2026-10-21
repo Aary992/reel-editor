@@ -384,9 +384,13 @@ def transition(img, t, cuts, L):
         lk = leak_layer(L.get("leak_tint", "amber"))
         if cuts.index(c) % 2:                   # alternate the side the glow comes from, cut to cut
             lk = lk[:, ::-1]
-        lk = lk / 255 * 0.55 * k               # screen blend: warms and glows, never blows out to white
+        lk = lk / 255 * L.get("leak_peak", 0.55) * k   # screen blend: warms and glows, never blows out to white
         a = 1 - (1 - a) * (1 - lk)
         return Image.fromarray(np.clip(a * 255, 0, 255).astype(np.uint8))
+    if kind == "flash":
+        k = smooth(u) ** 2
+        a = np.asarray(img, np.float32)
+        return Image.fromarray(np.clip(a + (255 - a) * 0.7 * k, 0, 255).astype(np.uint8))
     return img
 
 
@@ -783,6 +787,16 @@ def main():
     if L.get("story"):
         import story
         SP = story.plan(reel, words, dur, fps_f, ff, scene, video, log=print, music=a.music)
+        if SP["transition"]:
+            # his calls 10-22: a small transition where one take hands over to the next (the cut's own joins,
+            # which the shot detector misses when the framing barely changes), softened by a short dissolve
+            L["transition"], L["span"], L["leak_peak"] = SP["transition"], story.TRANS_SPAN, story.LEAK_PEAK
+            if L["transition"] == "leak":
+                L["leak_tint"] = pick_leak(reel.name, a.leak)
+            trans_cuts = [c for c in SP["jumpcuts"] if not any(x - 0.2 <= c <= y + 0.2 for x, y in hidden)]
+            SP["smooth_cuts"] = trans_cuts
+            print(f"  story: {L['transition']} ({L.get('leak_tint', 'white')}) + {story.DISSOLVE:.2f} s dissolve "
+                  f"on {len(trans_cuts)} take changes")
 
     # sound: whooshes and pops, each a different file or pitch from the one before
     sfx_dir = ROOT / "sfx"
@@ -883,6 +897,7 @@ def main():
         img = Image.frombuffer("RGB", (W, H), buf, "raw", "RGB", 0, 1)
         if SP:
             img = story.punch_frame(img, t, SP)
+            img = story.dissolve(img, t, SP)
         z = fx.zoom_at(t, keys) if keys else 1.0
         if z > 1.0005:   # the approved subtle drift: 1.00 -> 1.06 per sentence, anchored at mouth height
             zw, zh = W / z, H / z
