@@ -322,7 +322,9 @@ def is_green(ch, sp, first_sentence_end):
 def draw_captions(img, t, wins, sp, hidden, words):
     if any(a <= t < b for a, b in hidden):
         return img
-    win = next((w for w in wins if w[0] <= t < w[1]), None)
+    # words carry rounded times ("It's" at 6.27 in a take starting at 6.2667), which held the old caption one
+    # frame into the new take, at the new take's height: a visible jump ("oct 22", 10-22)
+    win = next((w for w in wins if w[0] <= t + CAP_SNAP < w[1]), None)
     if not win:
         return img
     ch = win[2]
