@@ -48,6 +48,7 @@ CAP_MAXW = 720                    # the right-hand buttons start 180 px in from 
 CAP_SHADOW = (135, 4, 2)          # alpha, blur, px down: a soft dark edge, no outline, no box
 CAP_Y_MIN, CAP_Y_MAX = 0.55, 0.775
 CAP_GAP = 0.065                   # caption middle under the detected chin: clears his real chin, not his mouth
+CAP_SNAP = 0.01                   # a caption window starting within this of a frame counts from that frame
 LIFT_MAX = 0.08                   # the most the picture is lifted to make room for that
 TRANSITION, TRANS_SPAN = "leak", 0.2   # a small light leak either side of a take change (v2's runs 0.32 s)
 LEAK_PEAK = 0.38                  # at most 38% of the glow (v2: 55%), so it reads as a small transition
