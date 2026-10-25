@@ -1,14 +1,15 @@
 ---
 name: reel-edit
-description: "Aarit's Reel engine. Use whenever Aarit sends or points to a video/Reel to edit (an .mp4/.mov, usually in Downloads), sends raw takes to cut, says 'edit this reel', 'make this reel', 'do the usual edit', 'Flow clips are in', gives on-screen text for a Reel, or sends a script with raw clips to assemble. Asks him first which look: story (dead space cut, plain white TikTok captions, real app UI overlays above his head on the exact word, punch-ins on jump cuts, vine boom), paper (cream paper split screens, Step N. headers, folder and Claude-icon motion graphics, built in Remotion) or v2 (bold iOS captions, light-leak cuts). Runs reel-editor/reel.py and paper/paper.py. Optional Flow motion text, in-scene visuals, SFX, loudness. No music, no cover, no caption pack."
+description: "Aarit's Reel engine. Use whenever Aarit sends or points to a video/Reel to edit (an .mp4/.mov, usually in Downloads), sends raw takes to cut, says 'edit this reel', 'make this reel', 'do the usual edit', 'Flow clips are in', gives on-screen text for a Reel, or sends a script with raw clips to assemble. Asks him first which look: story (dead space cut, plain white TikTok captions, real app UI overlays above his head on the exact word, punch-ins on jump cuts, vine boom), paper (cream paper split screens, Step N. headers, folder and Claude-icon motion graphics, built in Remotion), studio (full-screen motion graphics on a lit grey ruled backdrop with a moving 3D camera, pinned-note step board, Claude app mockups, word-by-word chest captions, face only for hook and CTA, built in Remotion) or v2 (bold iOS captions, light-leak cuts). Runs reel-editor/reel.py, paper/paper.py and paper/studio.py. Optional Flow motion text, in-scene visuals, SFX, loudness. No music, no cover, no caption pack."
 ---
 
-# Reel edit (Aarit's looks: story, paper and v2)
+# Reel edit (Aarit's looks: story, paper, studio and v2)
 
 Engine: `C:\Users\Aaru\Documents\reel-editor` on the laptop, `D:\My Data\Documents\cc\reel-editor` on the
 PC. Run `git pull` there first. Read `README.md`, `STYLE.md` and `FLOW.md` before the first run in a session.
-Python is `py -3.14`. Three looks: **story** (his approved style since 10-22), **paper** (locked 10-25, the
-creator tutorial's step-by-step look, everything in `paper\README.md`) and **v2**. **Before every reel, ask
+Python is `py -3.14`. Four looks: **story** (his approved style since 10-22), **paper** (locked 10-25, the
+creator tutorial's step-by-step look, everything in `paper\README.md`), **studio** (locked 10-25, full-screen
+graphics on a lit grey backdrop with a 3D camera, everything in `paper\STUDIO.md`) and **v2**. **Before every reel, ask
 him which one** (his call 10-25); never assume, never reuse the last answer. Never change a look unless he
 asks. **No music on any reel, in any look** (his call 10-25: "too distracting").
 
@@ -38,9 +39,11 @@ know (alternative hooks, a take that doesn't belong, a phrase) and re-run with `
 Before building anything, read what he says: the cut's transcript, or for an edited video a quick Whisper
 pass (`<whisper_python from config.json> transcribe.py "<video>" "<scratch>.json"`). Then send **one** message
 with every ask, so he can gather it all at once. Build only after he answers; then render once.
-- **Look:** "Which look do you want: story, paper or v2?" Always the first ask. For paper, skip motion text
-  and images below: ask for the hook title (two lines over his opening, offer 2 or 3 options) and anything
-  real the beats should show (screenshots, his earlier reels), then follow **Paper look** below.
+- **Look:** "Which look do you want: story, paper, studio or v2?" Always the first ask. For paper, skip motion
+  text and images below: ask for the hook title (two lines over his opening, offer 2 or 3 options) and anything
+  real the beats should show (screenshots, his earlier reels), then follow **Paper look** below. For studio,
+  skip motion text, hook line and images: ask only for anything real the graphics should show (screenshots,
+  a document, a chart), then follow **Studio look** below.
 - **Motion text** (story, v2): "Do you want motion graphic text in this video?" Never assume, never reuse the last
   answer. Prep refuses to run without it. If he wants one of each, make two reels from the one cut: copy
   `cut.mp4`, `cut.json`, `words.json` and `fixes.json` into `reels\<name> motion\` and prep that copy's
@@ -143,6 +146,29 @@ py -3.14 paper\paper.py render "<name>"
   around every scene change (`select='between(n,A,B)'`): no caption or graphic carried into the next scene.
 - Open, his note 10-25: smoother voice joins between takes. Not built; only when he asks.
 
+## Studio look (instead of steps 2 to 6)
+
+Read `paper\STUDIO.md` first: what the reference reels do, the backdrop, camera, objects, captions and sound.
+```
+py -3.14 paper\studio.py prep "<name>" ["<edited video>"]
+py -3.14 paper\studio.py still "<name>" 60 240 420 ...
+py -3.14 paper\studio.py render "<name>"
+```
+- Same inputs as paper: after the cut (step 0) or with an edited video. Fix misheard words in
+  `reels\<name>\words.json` first, then re-run prep. Media goes to `paper\public\studio\`, so a paper prep
+  never clobbers it.
+- Copy the current `paper\src\studio\beats.tsx` to `paper\examples\studio <its reel>.tsx`, then rewrite it:
+  first line `THIS REEL: "<name>"`. Face only for the hook, opinion lines and the CTA (hard cuts, about 25% of
+  the reel); everything that explains is a graphics set with its own camera (`World` + keys), each object
+  landing on his exact word. Use the kit: the pinned-note board as the step hub (the camera visits one note per
+  step, done steps get a check), Claude's app (greeting, prompt box, attachments flying in, send, whip pan to
+  the answer with highlights sweeping), documents to pan across, the numbered arc, one kinetic line with the
+  key word in the black box, the comment pill CTA (`CTA`). Never a number or claim he didn't say.
+- Check stills, then render in the background (about 5 min for 46 s). It delivers `<name> studio.mp4` to
+  Downloads at -14 LUFS, no music. Look at frames inside every set and around every face cut.
+- His notes 10-25 (built in): talking parts bright, not moody; subtle 100 to 106% zooms on every phrase while
+  he talks.
+
 ## Raw clips instead of an edited video (experiment, not in the engine yet)
 
 If he sends a script and raw takes instead of an edited video, see `lab/ASSEMBLE.md`: `lab/assemble.py`
@@ -152,6 +178,6 @@ picks the best take per script line and assembles one video, which then goes thr
 - No B-roll, ever. No cover or caption pack. **No music on any reel, in any look** (his call 10-25: "too
   distracting"; story reels had a bed from 10-20 to 10-24). Only if he asks for music on one reel, name the
   track in its `story.json`.
-- Ask which look (story, paper or v2) before every reel.
+- Ask which look (story, paper, studio or v2) before every reel.
 - Don't post, commit or push anything without his yes.
 - Report honestly what was checked and what wasn't. Sound is checked by measurement only.

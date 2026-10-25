@@ -1,8 +1,10 @@
 # Aarit's Reel looks
 
-Three looks, and **every reel starts by asking him which one** (his call 10-25): **story** (his approved style
+Four looks, and **every reel starts by asking him which one** (his call 10-25): **story** (his approved style
 since 10-22, "good i like this style"), **paper** (locked 10-25, the creator tutorial's step-by-step look,
-built in Remotion: everything about it is in [paper/README.md](paper/README.md)) or **v2** (locked 10-18,
+built in Remotion: everything about it is in [paper/README.md](paper/README.md)), **studio** (locked 10-25, a
+Hindi creator's Claude tutorials: full-screen graphics on a lit grey backdrop with a 3D camera, his face for the
+hook and CTA; everything in [paper/STUDIO.md](paper/STUDIO.md)) or **v2** (locked 10-18,
 `reel.py prep ... --look v2`). Don't change any of them unless he asks.
 
 **No music on any reel, in any look (his call 10-25: "too distracting").** A reel only gets a bed when he

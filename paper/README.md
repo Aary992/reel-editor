@@ -1,5 +1,8 @@
 # The paper look (LOCKED 2026-10-25)
 
+(The **studio** look lives in this same Remotion project with its own entry point, `src\studio\`: see
+[STUDIO.md](STUDIO.md).)
+
 Copied from a creator's "edit your video with AI" tutorial (he sent it 10-25 and asked for his exact style,
 motion graphics included). First reel: "claude edits" (`Downloads\claude edits motion.mp4`), approved 10-25:
 "Good, I like this. Let's lock this style in." Built in Remotion (React), not in render.py.
