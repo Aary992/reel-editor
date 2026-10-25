@@ -397,7 +397,7 @@ export const FindStyle: React.FC<P> = ({t}) => {
   const fly = ease(t, w('examples', 8), w('claude', 8) + 0.1);
   const icon = pop(t, w('reels', 8) - 0.1);
   const mim = pop(t, w('mimic', 8));
-  const own = pop(t, w('own', 8 + 0) > w('mimic', 8) ? w('own', w('mimic', 8)) : w('own', 8));
+  const own = pop(t, at('own', w('mimic', 8)));
   const promptAt = K(9);
   const fanOut = ease(t, reels - 0.1, reels + 0.15);
   const COLORS = ['#E8574A', '#F08A3C', '#F4C343', '#8CC56A', '#4FB6C9', '#5679D1', '#9364C8'];
