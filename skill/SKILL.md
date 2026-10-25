@@ -1,14 +1,16 @@
 ---
 name: reel-edit
-description: "Aarit's Reel engine. Use whenever Aarit sends or points to a video/Reel to edit (an .mp4/.mov, usually in Downloads), sends raw takes to cut, says 'edit this reel', 'make this reel', 'do the usual edit', 'Flow clips are in', gives on-screen text for a Reel, or sends a script with raw clips to assemble. Runs reel-editor/reel.py: the story look (dead space cut, plain white TikTok captions, real app UI overlays above his head on the exact word, punch-ins on jump cuts, vine boom) or the v2 look (bold iOS captions, light-leak cuts). Optional Flow motion text, in-scene visuals, SFX, loudness. No cover, no caption pack."
+description: "Aarit's Reel engine. Use whenever Aarit sends or points to a video/Reel to edit (an .mp4/.mov, usually in Downloads), sends raw takes to cut, says 'edit this reel', 'make this reel', 'do the usual edit', 'Flow clips are in', gives on-screen text for a Reel, or sends a script with raw clips to assemble. Asks him first which look: story (dead space cut, plain white TikTok captions, real app UI overlays above his head on the exact word, punch-ins on jump cuts, vine boom), paper (cream paper split screens, Step N. headers, folder and Claude-icon motion graphics, built in Remotion) or v2 (bold iOS captions, light-leak cuts). Runs reel-editor/reel.py and paper/paper.py. Optional Flow motion text, in-scene visuals, SFX, loudness. No music, no cover, no caption pack."
 ---
 
-# Reel edit (Aarit's looks: story, and v2)
+# Reel edit (Aarit's looks: story, paper and v2)
 
 Engine: `C:\Users\Aaru\Documents\reel-editor` on the laptop, `D:\My Data\Documents\cc\reel-editor` on the
 PC. Run `git pull` there first. Read `README.md`, `STYLE.md` and `FLOW.md` before the first run in a session.
-Python is `py -3.14`. The look is **story** (default since 10-20, his approved style since 10-22) unless he
-asks for v2. Never change a look unless he asks.
+Python is `py -3.14`. Three looks: **story** (his approved style since 10-22), **paper** (locked 10-25, the
+creator tutorial's step-by-step look, everything in `paper\README.md`) and **v2**. **Before every reel, ask
+him which one** (his call 10-25); never assume, never reuse the last answer. Never change a look unless he
+asks. **No music on any reel, in any look** (his call 10-25: "too distracting").
 
 **His approved story style (10-22, "good i like this style"): the engine does all of it by default, don't undo
 it:** no dead space (each clip trimmed to where his voice starts and stops), captions under his real chin and
@@ -36,7 +38,10 @@ know (alternative hooks, a take that doesn't belong, a phrase) and re-run with `
 Before building anything, read what he says: the cut's transcript, or for an edited video a quick Whisper
 pass (`<whisper_python from config.json> transcribe.py "<video>" "<scratch>.json"`). Then send **one** message
 with every ask, so he can gather it all at once. Build only after he answers; then render once.
-- **Motion text:** "Do you want motion graphic text in this video?" Never assume, never reuse the last
+- **Look:** "Which look do you want: story, paper or v2?" Always the first ask. For paper, skip motion text
+  and images below: ask for the hook title (two lines over his opening, offer 2 or 3 options) and anything
+  real the beats should show (screenshots, his earlier reels), then follow **Paper look** below.
+- **Motion text** (story, v2): "Do you want motion graphic text in this video?" Never assume, never reuse the last
   answer. Prep refuses to run without it. If he wants one of each, make two reels from the one cut: copy
   `cut.mp4`, `cut.json`, `words.json` and `fixes.json` into `reels\<name> motion\` and prep that copy's
   `cut.mp4` with `--text-cuts yes` (story.py only uses the cut's faces when the video is the reel's own cut).
@@ -45,8 +50,7 @@ with every ask, so he can gather it all at once. Build only after he answers; th
 - **Images:** a table: #, the word it lands on (with its second), what it shows, a Google search to find it.
   He saves them as 1, 2, 3... in `Downloads\<name> images\`. Never a wall of text cards, above all in the
   first 10 s. Ask for wide pictures, and nothing that gives away what the CTA withholds.
-- **Anything else the edit needs:** screenshots or screen recordings of what he shows or names, a different
-  music track, takes that look missing or doubled (check Downloads for the same timestamps and his
+- **Anything else the edit needs:** screenshots or screen recordings of what he shows or names, takes that look missing or doubled (check Downloads for the same timestamps and his
   `_1.mp4` phone rough edit), words Whisper may have misheard.
 
 When they arrive, check each image against its line before using it. Watch for a headline that says the
@@ -73,8 +77,8 @@ It transcribes, finds the exact shot cuts, picks motion text (if yes), finds a m
 - **Story look:** rewrite the drafted `overlays.json`: app UI cards that show what he says (his file going to
   Claude, Claude's answer, a step tracker, a score, word pills, the comments sheet on the CTA), each part
   anchored to his exact word, one at a time, nothing he didn't say. Write `story.json` with `"boom"`: the
-  punchline word (`"green"` only to override the headline number and CTA; `"music"` only for a different
-  track than his default, or `false` if he wants this one without). Check
+  punchline word (`"green"` only to override the headline number and CTA; `"music"` only when he asks for
+  music on this reel, naming the track). Check
   with `py -3.14 reel.py overlays "<name>"` and `reel.py preview "<name>" --seconds 8 --zones`.
 - **Images** (asked for in step 1): `{"type": "image", "at": "<word>", "src": "images/1.png", "end": "+5"}`.
   Copy his files into `reels\<name>\images\`. `"end": "+5"` holds one picture until the next overlay pops in.
@@ -120,14 +124,34 @@ any overlay that covers his hair or face. At a few clip changes pull the exact f
 (`select='between(n,A,B)'`): the dissolve has to start on the cut frame, with no frame of the old zoom on the
 new clip. That's the whole delivery: no cover, no caption pack.
 
+## Paper look (instead of steps 2 to 6)
+
+Read `paper\README.md` first: layouts, colours, type, the graphics kit and the commands.
+```
+py -3.14 paper\paper.py prep "<name>" ["<edited video>"]
+py -3.14 paper\paper.py still "<name>" 60 240 420 ...
+py -3.14 paper\paper.py render "<name>"
+```
+- After the cut (step 0) or with an edited video, `prep` copies the video, words and his face boxes into the
+  Remotion project. Fix misheard words in `reels\<name>\words.json` first, then re-run prep.
+- Copy the current `paper\src\beats.tsx` to `paper\examples\<its reel>.tsx`, then rewrite it for this reel:
+  first line `THIS REEL: "<name>"`, one graphic per beat landing on his exact words, `SCENES` switching
+  face / split / full where takes start (a take with no face never gets the face layout), `SFX`, `NAMES`.
+  Pictures and clips the beats use go in `reels\<name>\paper\` (served as `assets/<file>`).
+- Check stills at every beat's pop and full state before rendering, then render in the background (about 2
+  min for 34 s). It delivers `<name> final.mp4` to Downloads at -14 LUFS, no music. Look at the frames
+  around every scene change (`select='between(n,A,B)'`): no caption or graphic carried into the next scene.
+- Open, his note 10-25: smoother voice joins between takes. Not built; only when he asks.
+
 ## Raw clips instead of an edited video (experiment, not in the engine yet)
 
 If he sends a script and raw takes instead of an edited video, see `lab/ASSEMBLE.md`: `lab/assemble.py`
 picks the best take per script line and assembles one video, which then goes through step 1 as usual.
 
 ## Hard rules
-- No B-roll, ever. No cover or caption pack. Music: every story reel gets his music bed (25% under the hook,
-  then 10%) from the track in `reel-editor\music\` (his call 10-20). If the render log says "NO MUSIC",
-  that folder is empty: ask him for a track. v2 reels have no music, ever.
+- No B-roll, ever. No cover or caption pack. **No music on any reel, in any look** (his call 10-25: "too
+  distracting"; story reels had a bed from 10-20 to 10-24). Only if he asks for music on one reel, name the
+  track in its `story.json`.
+- Ask which look (story, paper or v2) before every reel.
 - Don't post, commit or push anything without his yes.
 - Report honestly what was checked and what wasn't. Sound is checked by measurement only.

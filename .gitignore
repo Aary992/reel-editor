@@ -9,3 +9,7 @@ __pycache__/
 fonts/**/*.ttf
 # his music tracks for story reels: his files, never in a repo
 music/
+# paper look: npm packages and the current reel's media (his video, copied in by paper.py prep)
+paper/node_modules/
+paper/public/
+paper/src/reel.json

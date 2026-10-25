@@ -5,7 +5,7 @@ render.py calls it when the reel's look is "story". The rules, in that creator's
   2. Keep everything out of the TikTok button zones.
   3. Real app UI above my head, never on my face.
   4. Every graphic pops in on the exact word.
-  5. Voice 200%, music 25% then 10%, vine boom on the punchline.
+  5. Voice 200%, music 25% then 10%, vine boom on the punchline. (Music OFF since 10-25, his call.)
   Plus: perfect the dead space (storycut.py), and a punch-in on every jump cut.
 
 Measured on his videos: captions Arial-Bold-like at 63 px (1080 wide), centred, at chin height (55% on his
@@ -15,8 +15,8 @@ Overlays sit in the band above his head (his "overlay section", from 15% down, n
 with no headroom they may cover his hair but never his face. Punch-ins alternate 100% / 115% (108% on a close-up) at every
 jump cut, anchored on his chin so the captions never land on his mouth.
 
-Music is ON for every story reel (his call 10-20): the track in the reel-editor "music" folder (the first by name),
-25% under the hook, then 10%. No track there yet means no music, and the render says so.
+Music is OFF on every reel (his call 10-25: "too distracting"; it was on for every story reel from 10-20).
+A reel only gets a bed when he asks and its story.json names the track: 25% under the hook, then 10%.
 
 His notes on the first story reel (10-22): "the subtitles clash with my mouth", "move my video slightly higher"
 and "each video needs a small transition, a light leak or a bright white effect". So the face detector's chin
@@ -28,7 +28,8 @@ small light leak where one take hands over to the next.
 Per-reel choices live in reels/<name>/story.json (all optional):
   {"green": ["10 minutes", "Comment Claude"], "boom": "skip", "music": "C:\\\\path\\\\other track.mp3",
    "lift": 0.05, "transition": "flash"}
-  "music": false leaves this one reel without music. "lift": a fraction of the height (0 = never lifted).
+  "music": a track, only when he asks for music on this reel (none by default).
+  "lift": a fraction of the height (0 = never lifted).
   "transition": "leak" (default), "flash" (a quick bright white) or false (hard cuts).
 """
 import json, math
@@ -59,8 +60,6 @@ PUNCH_WIDE, PUNCH_CLOSE = 1.15, 1.08
 CLOSE_UP_W = 0.65                 # a face wider than this fraction of the frame is a close-up
 BEAT_MAX, BEAT_MIN = 4.0, 2.0     # a punch change at a sentence start when a piece runs longer than BEAT_MAX
 CENSOR = {"fuck": "f*ck", "fucking": "f*cking", "fucked": "f*cked", "shit": "sh*t", "bitch": "b*tch"}
-MUSIC_DIR = Path(__file__).resolve().parent / "music"     # his track(s); kept out of git like the SFX
-AUDIO_EXT = {".mp3", ".wav", ".m4a", ".aac", ".flac", ".ogg"}
 
 # the app's own buttons and labels (TikTok and Instagram Reels); nothing of ours goes in these
 ZONES = [("top", (0, 0, W, int(0.15 * H)), "Following | For You"),
@@ -183,19 +182,12 @@ def lifted(f, lift):
 
 
 def pick_music(choice, log):
-    """This reel's music bed: its own track from story.json, none if it says false, else his default track."""
-    if choice is False:
-        log("  story: no music for this reel (story.json)")
+    """No music by default (his call 10-25: "too distracting"). Only a track story.json names gets a bed."""
+    if not choice:
         return None
-    if choice:
-        if not Path(choice).exists():
-            raise SystemExit(f"story.json music track not found: {choice}")
-        return str(choice)
-    tracks = sorted(p for p in MUSIC_DIR.glob("*") if p.suffix.lower() in AUDIO_EXT) if MUSIC_DIR.exists() else []
-    if not tracks:
-        log(f"  story: NO MUSIC: no track in {MUSIC_DIR} yet")
-        return None
-    return str(tracks[0])
+    if not Path(choice).exists():
+        raise SystemExit(f"story.json music track not found: {choice}")
+    return str(choice)
 
 
 def place(ov, punch, log):

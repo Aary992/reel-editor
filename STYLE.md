@@ -1,8 +1,12 @@
 # Aarit's Reel looks
 
-Two looks. New reels get **story** (the default since 10-20, his ask; his approved style since 10-22, "good i
-like this style"); **v2** (locked 10-18) is one flag away:
-`reel.py prep ... --look v2`. Don't change either unless he asks.
+Three looks, and **every reel starts by asking him which one** (his call 10-25): **story** (his approved style
+since 10-22, "good i like this style"), **paper** (locked 10-25, the creator tutorial's step-by-step look,
+built in Remotion: everything about it is in [paper/README.md](paper/README.md)) or **v2** (locked 10-18,
+`reel.py prep ... --look v2`). Don't change any of them unless he asks.
+
+**No music on any reel, in any look (his call 10-25: "too distracting").** A reel only gets a bed when he
+asks for one, and then its `story.json` names the track.
 
 # The story look (2026-10-20, from his inspo; APPROVED 10-22 with his notes on the "claude edits" reel)
 
@@ -92,19 +96,17 @@ classic TikTok captions, the storytelling style. Everything below was measured f
   pops and pitches.
 - **Vine boom on the punchline:** one per reel, on the word Claude picks (`"boom": "skip"` in `story.json`).
   Made in code (`story.ensure_boom`), peak -9 dBFS.
-- **Music ON for every story reel (his call 10-20):** his inspo's bed, 25% under the hook, then 10% for the
-  rest. The track is the first audio file in `reel-editor\music\` (his pick, kept out of git); it's looped,
-  loudnorm'd to -14 LUFS, eased from 25% to 10% over 0.6 s after the first sentence, faded out over the last
-  0.8 s. Measured on a test tone: exactly 8.0 dB down after the hook. One reel can use another track
-  (`"music": "<file>"` in `story.json`) or none (`"music": false`). No track in the folder means no music,
-  and the render log says so.
+- **No music (his call 10-25: "too distracting").** From 10-20 to 10-24 every story reel had his inspo's
+  bed, 25% under the hook, then 10%. The mix is still there for a reel he asks music for: name the track in
+  its `story.json` (`"music": "<file>"`); it's looped, loudnorm'd to -14 LUFS, eased from 25% to 10% over
+  0.6 s after the first sentence and faded out over the last 0.8 s.
 - No whooshes on jump cuts.
 
 ## What the story look changes from v2 (his ask, 10-20)
 Captions plain white and still instead of bold blur-in with rotating colours; one green accent instead of
 seven; app UI overlays (code-drawn) where v2 had none; punch-ins on cuts where v2 had a slow 6% drift and
 "never a punch-in"; a smaller light leak, only where takes change (hard cuts until 10-22); a music bed under
-every reel (v2: no music, ever). No B-roll, no cover, no caption pack: unchanged.
+every reel from 10-20 until 10-25 (none since). No B-roll, no cover, no caption pack: unchanged.
 
 # The v2 look (LOCKED 2026-10-18)
 
@@ -146,7 +148,7 @@ Don't change any of it unless he asks. `render.py` applies all of it; the values
 - **No B-roll, ever.**
 
 ## Sound
-- **No music, ever** (in v2; the story look has a music bed since 10-20).
+- **No music, ever** (and in every look since 10-25).
 - Whooshes only where the shot type changes (face / card / split screen), peaking at -10 dBFS on the cut
   frame. The 3 Mixkit whooshes cycle with the pitch varied, so no two in a row sound the same.
 - A pop on each motion text clip and on his on-screen text, peaking at -12 dBFS.
