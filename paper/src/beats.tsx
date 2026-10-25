@@ -287,7 +287,7 @@ export const ClaudeChat: React.FC<P> = ({t}) => {
                 <path d="M6 9 L12 15 L18 9" stroke={C.inkSoft} strokeWidth={2.6} fill="none" strokeLinecap="round" />
               </svg>
             </div>
-            <div style={{height: menu * 196, overflow: 'hidden'}}>
+            <div style={{height: menu * 236, overflow: 'hidden'}}>
               {rows.map(([a, b], i) => (
                 <div
                   key={a}
