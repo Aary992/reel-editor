@@ -1,12 +1,25 @@
-// THIS REEL: "claude edits" (10-22 takes, the first paper reel, 10-25). Rewrite this file for every new reel;
-// keep finished ones in paper/examples/. One component per beat; times come from the words (`at`), so each
-// graphic lands on its word. SCENES, SFX and NAMES at the bottom drive the generic Reel.tsx.
+// THIS REEL: "ai editor h1" (10-25 takes, two spoken hooks x two cover titles = four reels, 10-26). The body is the
+// same take in both cuts, so every body time is relative to K(i), the start of body clip i; only the hook
+// differs (NAME). COVER picks the title. Rewrite this file for every new reel; keep finished ones in examples/.
 import React from 'react';
-import {AbsoluteFill, Img, OffthreadVideo, Sequence, interpolate, staticFile} from 'remotion';
+import {AbsoluteFill, Img, OffthreadVideo, Sequence, staticFile} from 'remotion';
 import {Card, Check, ClaudeIcon, DottedPath, Folder, Label, Paper, StepHeader, Starburst} from './art';
 import {C, FONT, ease, mix, pop} from './style';
-import {FPS, at} from './data';
+import {CLIPS, FPS, NAME, at} from './data';
 import type {Scene, Sfx} from './data';
+
+const COVER: 1 | 2 = 1;
+const TITLE = COVER === 1 ? ['Everything you need to know', 'about editing with AI'] : ['Build your own', 'AI editor for free'];
+const H1 = NAME === 'ai editor h1';
+
+// Body clips (same in both cuts): 0 First, 1 Create a folder, 2 inside that folder, 3 Raw footage, 4 references,
+// 5 new Claude chat, 6 Give Claude the links, 7 tell it to install, 8 lock in your style, 9 using the same prompt,
+// 10 film, 11 place the raw footage, 12 the edit prompt, 13 adjustment, 14 voila, 15 complete reel,
+// 16 my workflow, 17 comment.
+const B = at('first');
+const B0 = CLIPS.findIndex((c) => c.t0 >= B - 0.02);
+const K = (i: number) => CLIPS[B0 + i].t0;
+const w = (word: string, i: number) => at(word, K(i));
 
 type P = {t: number};
 const abs = (x: number, y: number, extra?: React.CSSProperties): React.CSSProperties => ({
@@ -18,51 +31,117 @@ const abs = (x: number, y: number, extra?: React.CSSProperties): React.CSSProper
 });
 const popStyle = (k: number, from = 0.6): React.CSSProperties => ({opacity: Math.min(1, k * 1.6), scale: `${mix(from, 1, k)}`});
 
-// 0 to 5.3 s: his hook. White title on top the whole time, a row of reels Claude edited pops in under it.
+// A white Claude chat card: greeting, the prompt typing in, model name and the orange send button.
+const PromptCard: React.FC<{t: number; t0: number; lines: string[]; width?: number; size?: number; send?: number}> = ({t, t0, lines, width = 860, size = 30, send}) => {
+  const typed = ease(t, t0 + 0.1, t0 + 1.1);
+  const total = lines.join('').length;
+  let left = Math.round(total * typed);
+  const sent = send !== undefined && t >= send;
+  return (
+    <Card style={{width}}>
+      <div style={{display: 'flex', alignItems: 'center', gap: 14, padding: '22px 28px 10px'}}>
+        <Starburst size={34} color={C.terracotta} />
+        <div style={{fontWeight: 800, fontSize: 32, letterSpacing: '-0.03em', color: C.ink}}>How can I help you today?</div>
+      </div>
+      <div style={{margin: '8px 22px 0', padding: '16px 20px', borderRadius: 16, border: `1.5px solid ${C.cardLine}`, background: '#FBFAF8', minHeight: 100}}>
+        {lines.map((l, i) => {
+          const shown = l.slice(0, Math.max(0, left));
+          left -= l.length;
+          return (
+            <div key={i} style={{fontWeight: 600, fontSize: size, lineHeight: 1.35, letterSpacing: '-0.02em', color: i === 0 ? C.ink : C.inkSoft, minHeight: size * 1.35}}>
+              {shown}
+            </div>
+          );
+        })}
+      </div>
+      <div style={{display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 16, padding: '14px 26px 20px'}}>
+        <div style={{fontWeight: 700, fontSize: 24, color: C.inkSoft}}>Opus 5.5</div>
+        <div
+          style={{
+            width: 52,
+            height: 52,
+            borderRadius: 14,
+            background: C.terracotta,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            scale: sent ? `${mix(1.2, 1, ease(t, send!, send! + 0.2))}` : '1',
+            opacity: typed >= 1 ? 1 : 0.45,
+          }}
+        >
+          <svg width={28} height={28} viewBox="0 0 24 24">
+            <path d="M12 19 V6 M6 11.5 L12 5.5 L18 11.5" stroke="#fff" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" fill="none" />
+          </svg>
+        </div>
+      </div>
+    </Card>
+  );
+};
+
+// A browser window icon (three dots, address bar, globe).
+const Browser: React.FC<{size: number}> = ({size}) => (
+  <div style={{width: size, height: size * 0.8, borderRadius: size * 0.1, background: '#fff', border: `3px solid ${C.cardLine}`, boxShadow: '0 10px 24px rgba(40,30,20,0.18)', overflow: 'hidden'}}>
+    <div style={{height: size * 0.18, background: '#EFEBE5', display: 'flex', alignItems: 'center', gap: size * 0.035, padding: `0 ${size * 0.06}px`}}>
+      {['#E9695E', '#F2BE4F', '#62C554'].map((c) => (
+        <div key={c} style={{width: size * 0.055, height: size * 0.055, borderRadius: 99, background: c}} />
+      ))}
+      <div style={{flex: 1, height: size * 0.08, marginLeft: size * 0.04, borderRadius: 99, background: '#fff'}} />
+    </div>
+    <div style={{display: 'flex', alignItems: 'center', justifyContent: 'center', height: size * 0.62}}>
+      <svg width={size * 0.36} height={size * 0.36} viewBox="0 0 24 24">
+        <circle cx={12} cy={12} r={10} stroke="#7FA7C9" strokeWidth={1.8} fill="none" />
+        <path d="M2 12 H22 M12 2 C 7 7, 7 17, 12 22 M12 2 C 17 7, 17 17, 12 22" stroke="#7FA7C9" strokeWidth={1.8} fill="none" />
+      </svg>
+    </div>
+  </div>
+);
+
+// A phone-shaped reel card playing one of his reels (or a still).
+const ReelCard: React.FC<{src: string; t0: number; w: number; style?: React.CSSProperties}> = ({src, t0, w: cw, style}) => (
+  <div style={{width: cw, height: cw * 1.78, borderRadius: 14, overflow: 'hidden', border: '4px solid #fff', boxShadow: '0 10px 26px rgba(0,0,0,0.3)', background: '#222', ...style}}>
+    {src.endsWith('.mp4') ? (
+      <Sequence from={Math.round(t0 * FPS)} layout="none">
+        <OffthreadVideo src={staticFile(src)} muted style={{width: '100%', height: '100%', objectFit: 'cover'}} />
+      </Sequence>
+    ) : (
+      <Img src={staticFile(src)} style={{width: '100%', height: '100%', objectFit: 'cover'}} />
+    )}
+  </div>
+);
+
+// Hook: the cover title on top the whole time, a row of edited reels under it on the first line.
 export const Hook: React.FC<P> = ({t}) => {
-  const cards = [0, at('edited'), at('video')];
+  const cards = H1 ? [0, at('editing'), at('videos')] : [0, at('build'), at('editor')];
+  const off = ease(t, (H1 ? at('so') : at('step')) - 0.15, (H1 ? at('so') : at('step')) + 0.05);
   return (
     <AbsoluteFill>
       <div
         style={{
           position: 'absolute',
-          top: 268,
-          left: 40,
-          right: 40,
+          top: 250,
+          left: 30,
+          right: 30,
           textAlign: 'center',
           fontFamily: FONT,
           fontWeight: 700,
-          fontSize: 74,
+          fontSize: 72,
           lineHeight: 1.2,
           letterSpacing: '-0.025em',
           color: '#fff',
           textShadow: '0 2px 4px rgba(0,0,0,0.35), 0 6px 24px rgba(0,0,0,0.35)',
         }}
       >
-        How I get Claude to
+        {TITLE[0]}
         <br />
-        edit my reels for me
+        {TITLE[1]}
       </div>
-      {t < 2.5 &&
+      {off < 1 &&
         cards.map((t0, i) => {
           const k = pop(t, t0, 240);
           if (k <= 0) return null;
           return (
-            <div
-              key={i}
-              style={{
-                ...abs(540 + (i - 1) * 290, 745),
-                width: 266,
-                height: 473,
-                borderRadius: 16,
-                overflow: 'hidden',
-                boxShadow: '0 10px 30px rgba(0,0,0,0.35)',
-                ...popStyle(k, 0.8),
-              }}
-            >
-              <Sequence from={Math.round(t0 * FPS)} layout="none">
-                <OffthreadVideo src={staticFile(`assets/reel${i + 1}.mp4`)} muted style={{width: '100%', height: '100%', objectFit: 'cover'}} />
-              </Sequence>
+            <div key={i} style={abs(540 + (i - 1) * 290, 745, {...popStyle(k, 0.8), opacity: Math.min(1, k * 1.6) * (1 - off)})}>
+              <ReelCard src={`assets/reel${i + 1}.mp4`} t0={t0} w={258} style={{borderRadius: 16, border: 'none'}} />
             </div>
           );
         })}
@@ -70,132 +149,77 @@ export const Hook: React.FC<P> = ({t}) => {
   );
 };
 
-// 5.3 s, full paper: his raw clips drop into the Raw footage folder, a dotted line carries one to Claude.
-export const RawFootage: React.FC<P> = ({t}) => {
-  const t0 = 5.3;
-  const send = at('send');
-  const raw = at('raw');
-  const solid = ease(t, t0 + 0.08, t0 + 0.28);
-  const line = ease(t, send, send + 0.32);
-  const icon = pop(t, send + 0.16);
-  const fly = ease(t, raw, raw + 0.42);
-  const bump = 1 + 0.1 * Math.sin(Math.min(1, Math.max(0, (t - raw - 0.42) / 0.25)) * Math.PI);
+// Body 0, split: Step 1. The Claude desktop app gets the check, the browser gets struck out.
+export const DesktopApp: React.FC<P> = ({t}) => {
+  const t0 = K(0);
+  const app = pop(t, w('claude', 0));
+  const br = pop(t, w('browser', 0));
+  const slide = ease(t, w('not', 0), w('not', 0) + 0.3);
+  const strike = ease(t, w('version', 0), w('version', 0) + 0.25);
+  const tick = pop(t, w('version', 0) + 0.2);
+  return (
+    <AbsoluteFill>
+      <Paper style={{height: 960}} />
+      <StepHeader n={1} title="Set it up" y={110} k={ease(t, t0, t0 + 0.18)} />
+      <div style={abs(mix(540, 300, slide), 450, popStyle(app))}>
+        <ClaudeIcon size={250} />
+      </div>
+      <Label text="Desktop app" size={50} style={abs(mix(540, 300, slide), 655, {opacity: Math.min(1, app * 1.5)})} />
+      <div style={abs(mix(540, 300, slide) + 110, 340, {scale: `${tick}`})}>
+        <Check size={70} />
+      </div>
+      {br > 0 && (
+        <>
+          <div style={abs(780, 450, {...popStyle(br), opacity: Math.min(1, br * 1.6) * mix(1, 0.5, strike)})}>
+            <Browser size={250} />
+          </div>
+          <Label text="Browser" size={50} style={abs(780, 655, {opacity: Math.min(1, br * 1.5) * mix(1, 0.5, strike)})} />
+          <svg width={1080} height={960} style={{position: 'absolute', left: 0, top: 0}}>
+            <path d="M 660 340 L 900 570 M 900 340 L 660 570" stroke={C.terracotta} strokeWidth={14} strokeLinecap="round" pathLength={1} strokeDasharray="1 1" strokeDashoffset={1 - strike} fill="none" />
+          </svg>
+        </>
+      )}
+    </AbsoluteFill>
+  );
+};
+
+// Body 1, full paper: a ghost folder fills in on "folder", gets its name on "called".
+export const CreateFolder: React.FC<P> = ({t}) => {
+  const t0 = K(1);
+  const ghost = pop(t, w('folder', 1) - 0.1);
+  const solid = ease(t, w('computer', 1), w('computer', 1) + 0.3);
+  const name = pop(t, w('called', 1) + 0.15);
   return (
     <AbsoluteFill>
       <Paper />
-      <div style={abs(310, 770)}>
-        <Folder w={400} solid={solid} open={0.55}>
-          {[0, 1, 2].map((i) => {
-            const k = ease(t, t0 + 0.2 + i * 0.09, t0 + 0.48 + i * 0.09);
-            return (
-              <Img
-                key={i}
-                src={staticFile(`assets/raw${i + 1}.jpg`)}
-                style={{
-                  position: 'absolute',
-                  left: 60 + i * 96,
-                  top: mix(-360, -30 + (i === 1 ? -16 : 0), k),
-                  width: 112,
-                  height: 170,
-                  objectFit: 'cover',
-                  border: '4px solid #fff',
-                  borderRadius: 6,
-                  rotate: `${(i - 1) * 6}deg`,
-                  boxShadow: '0 4px 10px rgba(0,0,0,0.2)',
-                  opacity: k > 0 ? 1 : 0,
-                }}
-              />
-            );
-          })}
-        </Folder>
+      <StepHeader n={1} title="Set it up" y={300} k={ease(t, t0, t0 + 0.18)} />
+      <div style={abs(540, 800, popStyle(ghost, 0.7))}>
+        <Folder w={440} solid={solid} />
       </div>
-      <Label text="Raw footage" color={C.terracotta} size={50} style={abs(310, 1010, {opacity: solid})} />
-      <DottedPath d="M 530 770 L 670 770" p={line} w={1080} h={1920} />
-      <div style={abs(800, 770, popStyle(icon))}>
-        <div style={{scale: `${bump}`}}>
-          <ClaudeIcon size={230} />
-        </div>
-      </div>
-      <Label text="Claude" size={50} style={abs(800, 1010, {opacity: icon})} />
-      {fly > 0 && fly < 1 && (
-        <Img
-          src={staticFile('assets/raw2.jpg')}
-          style={abs(mix(380, 790, fly), 770 - Math.sin(fly * Math.PI) * 90, {
-            width: mix(92, 50, fly),
-            height: mix(140, 76, fly),
-            objectFit: 'cover',
-            border: '4px solid #fff',
-            borderRadius: 6,
-            boxShadow: '0 6px 14px rgba(0,0,0,0.25)',
-          })}
-        />
-      )}
+      <Label text="AI Video Editor" color={C.terracotta} size={62} style={abs(540, 1060, popStyle(name, 0.7))} />
     </AbsoluteFill>
   );
 };
 
-// 7.1 s, split: all you need is Claude Code installed.
-export const Install: React.FC<P> = ({t}) => {
-  const claude = at('claude', 8);
-  const inst = at('installed');
-  const ghost = ease(t, 7.1333, 7.3);
-  const icon = pop(t, claude);
-  const bar = ease(t, inst, inst + 0.5);
-  const done = pop(t, inst + 0.55);
-  return (
-    <AbsoluteFill>
-      <Paper style={{height: 960}} />
-      <div style={abs(540, 340, {width: 250, height: 250, borderRadius: 60, border: `5px dashed rgba(75,66,58,${0.35 * ghost * (1 - icon)})`})} />
-      <div style={abs(540, 340, popStyle(icon))}>
-        <ClaudeIcon size={250} />
-      </div>
-      <Label text="Claude Code" size={54} style={abs(540, 540, {opacity: Math.min(1, icon * 1.5)})} />
-      {t >= inst && done < 0.05 && (
-        <div style={abs(540, 625, {width: 380, height: 20, borderRadius: 10, background: 'rgba(75,66,58,0.14)', overflow: 'hidden'})}>
-          <div style={{width: `${bar * 100}%`, height: '100%', background: C.terracotta, borderRadius: 10}} />
-        </div>
-      )}
-      {done > 0 && (
-        <div
-          style={abs(540, 630, {
-            display: 'flex',
-            alignItems: 'center',
-            gap: 14,
-            padding: '12px 30px 12px 14px',
-            borderRadius: 50,
-            background: C.terracotta,
-            color: '#fff',
-            fontFamily: FONT,
-            fontWeight: 800,
-            fontSize: 36,
-            letterSpacing: '-0.03em',
-            ...popStyle(done, 0.7),
-          })}
-        >
-          <Check size={44} color="rgba(255,255,255,0.25)" />
-          Installed
-        </div>
-      )}
-    </AbsoluteFill>
-  );
-};
-
-// 10 s, split: Claude at the top, a tree to three rule folders (his folder-tree scene).
-export const ThreeRules: React.FC<P> = ({t}) => {
-  const t0 = 9.9667;
+// Body 2 to 4, split: the folder moves up, a tree draws to three subfolders, each named on its word.
+export const Subfolders: React.FC<P> = ({t}) => {
+  const t0 = K(2);
   const move = ease(t, t0, t0 + 0.32);
-  const tree = ease(t, at('taught'), at('taught') + 0.3);
-  const three = at('three', 10);
-  const xs = [250, 540, 830];
+  const tree = ease(t, w('three', 2) - 0.1, w('three', 2) + 0.25);
+  const xs = [230, 540, 850];
+  const names = ['Raw footage', 'References', 'Exports'];
+  const named = [w('raw', 3), w('references', 3), w('exports', 3)];
   return (
     <AbsoluteFill>
       <Paper style={{height: 960}} />
-      <div style={abs(540, mix(340, 175, move))}>
-        <ClaudeIcon size={mix(250, 140, move)} />
+      <StepHeader n={1} title="Set it up" y={110} k={1} />
+      <div style={abs(540, mix(470, 300, move))}>
+        <Folder w={mix(300, 190, move)} />
       </div>
+      <Label text="AI Video Editor" size={36} style={abs(540, mix(640, 400, move))} />
       <svg width={1080} height={960} style={{position: 'absolute', left: 0, top: 0}}>
         <path
-          d="M 540 255 V 350 M 250 350 H 830 M 250 350 V 425 M 540 350 V 425 M 830 350 V 425"
+          d="M 540 430 V 490 M 230 490 H 850 M 230 490 V 540 M 540 490 V 540 M 850 490 V 540"
           stroke={C.line}
           strokeWidth={3}
           fill="none"
@@ -205,14 +229,24 @@ export const ThreeRules: React.FC<P> = ({t}) => {
         />
       </svg>
       {xs.map((x, i) => {
-        const k = pop(t, three + i * 0.1);
-        const solid = ease(t, three + i * 0.1 + 0.1, three + i * 0.1 + 0.3);
+        const k = pop(t, w('subfolders', 2) + i * 0.1);
+        const solid = ease(t, named[i], named[i] + 0.2);
+        const lab = pop(t, named[i]);
         return (
           <React.Fragment key={i}>
-            <div style={abs(x, 545, popStyle(k, 0.7))}>
-              <Folder w={210} solid={solid} />
+            <div style={abs(x, 640, popStyle(k, 0.7))}>
+              <Folder w={200} solid={solid} open={i === 0 ? 0.5 * solid : 0}>
+                {i === 0 &&
+                  [0, 1].map((j) => (
+                    <Img
+                      key={j}
+                      src={staticFile(`assets/raw${j + 1}.jpg`)}
+                      style={{position: 'absolute', left: 50 + j * 54, top: mix(-140, -20, ease(t, named[0] + 0.1, named[0] + 0.4)), width: 60, height: 90, objectFit: 'cover', border: '3px solid #fff', borderRadius: 4, rotate: `${(j - 0.5) * 10}deg`, opacity: solid}}
+                    />
+                  ))}
+              </Folder>
             </div>
-            <Label text={`Rule ${i + 1}`} color={C.terracotta} size={46} style={abs(x, 695, {opacity: Math.min(1, k * 1.5)})} />
+            <Label text={names[i]} color={C.terracotta} size={42} style={abs(x, 780, popStyle(lab, 0.7))} />
           </React.Fragment>
         );
       })}
@@ -220,296 +254,423 @@ export const ThreeRules: React.FC<P> = ({t}) => {
   );
 };
 
-// 13.1 s, split: Step 1. A timeline whose pauses get found by the playhead, then cut out.
-export const DeadSpace: React.FC<P> = ({t}) => {
-  const t0 = 13.1;
-  const kill = at('kill');
-  const dead = at('dead');
-  const widths = [150, 118, 176, 104, 142];
-  const gap = 62;
-  const collapse = ease(t, dead, dead + 0.4);
-  const g = gap * (1 - collapse);
-  const total = widths.reduce((a, b) => a + b, 0) + g * 4;
-  let x = 540 - total / 2;
-  const head = interpolate(t, [kill, dead - 0.05], [70, 1010], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'});
-  const secs = interpolate(t, [at('every', 14), dead + 0.4], [3.4, 0], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'});
-  const counter = pop(t, at('every', 14) - 0.2);
-  const items: React.ReactNode[] = [];
-  widths.forEach((w, i) => {
-    const k = pop(t, t0 + 0.15 + i * 0.06, 260);
-    items.push(
-      <div
-        key={`c${i}`}
-        style={{
-          position: 'absolute',
-          left: x,
-          top: 380,
-          width: w,
-          height: 130,
-          borderRadius: 16,
-          background: `linear-gradient(180deg, #8DD6F6, ${C.folder})`,
-          boxShadow: '0 6px 14px rgba(40,90,120,0.22)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 6,
-          ...popStyle(k, 0.5),
-        }}
-      >
-        {Array.from({length: Math.floor(w / 18)}).map((_, j) => (
-          <div key={j} style={{width: 6, borderRadius: 3, background: 'rgba(255,255,255,0.9)', height: 18 + Math.abs(Math.sin((i + 1) * 7 + j * 1.9)) * 56}} />
-        ))}
-      </div>,
-    );
-    x += w;
-    if (i < widths.length - 1) {
-      const hit = t >= kill && head > x + g / 2;
-      items.push(
-        <div
-          key={`g${i}`}
-          style={{
-            position: 'absolute',
-            left: x + 6,
-            top: 400,
-            width: Math.max(0, g - 12),
-            height: 90,
-            borderRadius: 10,
-            background: hit
-              ? 'repeating-linear-gradient(45deg, rgba(203,96,62,0.55) 0 7px, rgba(203,96,62,0.12) 7px 15px)'
-              : 'repeating-linear-gradient(45deg, rgba(75,66,58,0.28) 0 7px, rgba(75,66,58,0.06) 7px 15px)',
-            opacity: pop(t, t0 + 0.4) * (1 - collapse * 0.7),
-          }}
-        />,
-      );
-      x += g;
-    }
-  });
+// Body 5, full paper: a new Claude chat, the environment menu opens on "select", Local gets picked, then a
+// dotted line points Claude at the AI Video Editor folder.
+export const ClaudeChat: React.FC<P> = ({t}) => {
+  const t0 = K(5);
+  const card = pop(t, t0 + 0.05, 220);
+  const menu = ease(t, w('select', 5), w('select', 5) + 0.2);
+  const pick = t >= w('local', 5) + 0.15;
+  const read = pop(t, w('read', 5));
+  const point = w('point', 5);
+  const down = ease(t, point - 0.25, point + 0.05);
+  const icon = pop(t, point);
+  const line = ease(t, point + 0.15, point + 0.5);
+  const fold = pop(t, w('folder', 5) - 0.15);
+  const rows: [string, string][] = [
+    ['Local', 'This computer'],
+    ['Cloud', 'Anthropic cloud'],
+  ];
   return (
     <AbsoluteFill>
-      <Paper style={{height: 960}} />
-      <StepHeader n={1} title="Kill dead space" y={110} k={ease(t, t0, t0 + 0.18)} />
-      {items}
-      {t >= kill && t < dead + 0.05 && (
-        <div style={{position: 'absolute', left: head - 3, top: 345, width: 6, height: 200, background: C.terracotta, borderRadius: 3}}>
-          <div style={{position: 'absolute', left: -11, top: -14, width: 28, height: 28, background: C.terracotta, rotate: '45deg', borderRadius: 4}} />
-        </div>
-      )}
-      <div style={abs(540, 680, {textAlign: 'center', ...popStyle(counter, 0.8)})}>
-        <Label text="dead space" color={C.inkSoft} size={40} />
-        <div style={{fontFamily: FONT, fontWeight: 900, fontSize: 112, letterSpacing: '-0.05em', color: C.terracotta, lineHeight: 1}}>
-          {secs.toFixed(1)}s
-        </div>
+      <Paper />
+      <div style={abs(540, mix(700, 560, down), {...popStyle(card, 0.8), opacity: Math.min(1, card * 1.6) * (1 - down * 0.25)})}>
+        <Card style={{width: 860}}>
+          <div style={{display: 'flex', alignItems: 'center', gap: 14, padding: '24px 30px', borderBottom: `1.5px solid ${C.cardLine}`}}>
+            <Starburst size={38} color={C.terracotta} />
+            <div style={{fontWeight: 800, fontSize: 36, letterSpacing: '-0.03em', color: C.ink}}>New chat</div>
+          </div>
+          <div style={{padding: '22px 30px'}}>
+            <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 22px', borderRadius: 14, border: `1.5px solid ${menu > 0 ? C.terracotta : C.cardLine}`}}>
+              <div style={{fontWeight: 700, fontSize: 32, color: pick ? C.ink : C.inkSoft}}>{pick ? 'Local' : 'Choose environment'}</div>
+              <svg width={26} height={26} viewBox="0 0 24 24">
+                <path d="M6 9 L12 15 L18 9" stroke={C.inkSoft} strokeWidth={2.6} fill="none" strokeLinecap="round" />
+              </svg>
+            </div>
+            <div style={{height: menu * 196, overflow: 'hidden'}}>
+              {rows.map(([a, b], i) => (
+                <div
+                  key={a}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 18,
+                    marginTop: 12,
+                    padding: '16px 22px',
+                    borderRadius: 14,
+                    background: i === 0 && pick ? 'rgba(203,96,62,0.12)' : '#F7F5F2',
+                  }}
+                >
+                  <div style={{flex: 1}}>
+                    <div style={{fontWeight: 800, fontSize: 32, letterSpacing: '-0.03em', color: C.ink}}>{a}</div>
+                    <div style={{fontWeight: 600, fontSize: 24, color: C.inkSoft}}>{b}</div>
+                  </div>
+                  {i === 0 && pick && <Check size={44} />}
+                </div>
+              ))}
+            </div>
+            {read > 0 && (
+              <div style={{display: 'flex', alignItems: 'center', gap: 12, marginTop: 16, fontWeight: 700, fontSize: 28, color: C.terracotta, opacity: Math.min(1, read * 1.5)}}>
+                <Check size={34} k={read} />
+                Claude can read your files
+              </div>
+            )}
+          </div>
+        </Card>
       </div>
+      {icon > 0 && (
+        <>
+          <div style={abs(300, 1020, popStyle(icon))}>
+            <ClaudeIcon size={170} />
+          </div>
+          <Label text="Claude" size={42} style={abs(300, 1150, {opacity: icon})} />
+          <DottedPath d="M 410 1020 L 640 1020" p={line} w={1080} h={1920} arrow={{x: 640, y: 1020, angle: 0}} />
+          <div style={abs(790, 1020, popStyle(fold, 0.7))}>
+            <Folder w={200} />
+          </div>
+          <Label text="AI Video Editor" size={38} style={abs(790, 1150, {opacity: fold})} />
+        </>
+      )}
     </AbsoluteFill>
   );
 };
 
-// 16.3 s, split: Step 2. Fancy caption styles get struck out, then an arrow points at his real caption.
-export const PlainCaptions: React.FC<P> = ({t}) => {
-  const t0 = 16.2667;
-  const cap = at('caption');
-  const plain = at('plain');
-  const these = at('these');
-  const white = at('white');
-  const out = ease(t, these, these + 0.22);
-  const samples: {node: React.ReactNode; y: number; rot: number}[] = [
-    {
-      y: 300,
-      rot: -3,
-      node: (
-        <div style={{display: 'flex', gap: 10}}>
-          {['SO', 'GOOD'].map((w) => (
-            <span key={w} style={{background: '#FFE04A', color: '#111', padding: '2px 14px', borderRadius: 8, fontFamily: FONT, fontWeight: 900, fontSize: 66}}>
-              {w}
-            </span>
-          ))}
-        </div>
-      ),
-    },
-    {
-      y: 445,
-      rot: 0,
-      node: (
-        <span
-          style={{
-            fontFamily: 'Georgia, serif',
-            fontStyle: 'italic',
-            fontWeight: 700,
-            fontSize: 84,
-            background: 'linear-gradient(90deg, #FF4FA3, #FF9F2E, #8B5CF6)',
-            WebkitBackgroundClip: 'text',
-            color: 'transparent',
-          }}
-        >
-          captions
-        </span>
-      ),
-    },
-    {
-      y: 590,
-      rot: 4,
-      node: (
-        <span style={{fontFamily: FONT, fontWeight: 900, fontSize: 70, color: '#39D26B', WebkitTextStroke: '12px #111', paintOrder: 'stroke fill'}}>WOW!!</span>
-      ),
-    },
-  ];
-  const label = pop(t, these + 0.05);
-  const arrow = ease(t, these + 0.15, these + 0.45);
+// Body 6 and 7, split: Step 2. The tool links card, then the install prompt typing in and sending.
+const TOOLS: [string, string, string][] = [
+  ['Remotion', 'motion graphics in code', 'remotion.dev'],
+  ['FFmpeg', 'cuts, audio, export', 'ffmpeg.org'],
+  ['Whisper', 'word-timed captions', 'github.com/openai/whisper'],
+  ['yt-dlp', 'downloads reference reels', 'github.com/yt-dlp/yt-dlp'],
+];
+export const InstallTools: React.FC<P> = ({t}) => {
+  const t0 = K(6);
+  const card = pop(t, w('links', 6) - 0.05, 220);
+  const swap = K(7);
+  const prompt = pop(t, w('prompt', 7) - 0.6, 220);
   return (
     <AbsoluteFill>
       <Paper style={{height: 960}} />
-      <StepHeader n={2} title="Plain white captions" y={110} k={ease(t, t0, t0 + 0.18)} />
-      {samples.map((s, i) => {
-        const k = pop(t, cap + i * 0.12);
-        const strike = ease(t, plain + i * 0.07, plain + 0.25 + i * 0.07);
-        if (k <= 0 || out >= 1) return null;
-        return (
-          <div key={i} style={abs(540, s.y, {...popStyle(k, 0.6), opacity: Math.min(1, k * 1.6) * mix(1, 0.45, strike) * (1 - out), rotate: `${s.rot}deg`})}>
-            <div style={{position: 'relative', translate: `${-out * 160}px 0`}}>
-              {s.node}
-              <div
-                style={{
-                  position: 'absolute',
-                  left: -20,
-                  top: '50%',
-                  height: 9,
-                  width: `calc(${strike * 100}% + ${strike * 40}px)`,
-                  background: C.terracotta,
-                  borderRadius: 5,
-                  rotate: '-4deg',
-                }}
-              />
+      <StepHeader n={2} title="Install the tools" y={90} k={ease(t, t0, t0 + 0.18)} />
+      {t < swap && card > 0 && (
+        <div style={abs(540, 520, popStyle(card, 0.8))}>
+          <Card style={{width: 900}}>
+            <div style={{display: 'flex', alignItems: 'center', gap: 14, padding: '20px 30px', borderBottom: `1.5px solid ${C.cardLine}`}}>
+              <Starburst size={36} color={C.terracotta} />
+              <div style={{fontWeight: 800, fontSize: 36, letterSpacing: '-0.03em', color: C.ink}}>Install these tools</div>
             </div>
+            {TOOLS.map(([n, d, link], i) => {
+              const k = ease(t, w('required', 6) + i * 0.12, w('required', 6) + i * 0.12 + 0.2);
+              return (
+                <div key={n} style={{display: 'flex', alignItems: 'center', padding: '14px 30px', borderTop: i ? `1.5px solid ${C.cardLine}` : undefined, opacity: k, translate: `${(1 - k) * 30}px 0`}}>
+                  <div style={{width: 300}}>
+                    <div style={{fontWeight: 800, fontSize: 34, letterSpacing: '-0.03em', color: C.ink}}>{n}</div>
+                    <div style={{fontWeight: 600, fontSize: 22, color: C.inkSoft}}>{d}</div>
+                  </div>
+                  <div style={{flex: 1, fontWeight: 700, fontSize: 26, color: '#2F7FC1', textDecoration: 'underline'}}>{link}</div>
+                </div>
+              );
+            })}
+          </Card>
+        </div>
+      )}
+      {t >= swap && (
+        <div style={abs(540, 520, popStyle(Math.max(prompt, pop(t, swap)), 0.8))}>
+          <PromptCard
+            t={t}
+            t0={swap}
+            lines={['Install these tools on my computer:', '1. Remotion  2. FFmpeg  3. Whisper  4. yt-dlp', 'Test each one, then tell me when you are ready.']}
+            send={w('prompt', 7) + 0.1}
+          />
+        </div>
+      )}
+    </AbsoluteFill>
+  );
+};
+
+// Body 8 and 9, split: Step 3. A colour fan for "style", someone's reels, 3 to 4 of them fly to Claude, then
+// the style prompt.
+export const FindStyle: React.FC<P> = ({t}) => {
+  const t0 = K(8);
+  const fan = pop(t, w('style', 8));
+  const reels = w('copy', 8);
+  const send = w('send', 8);
+  const fly = ease(t, w('examples', 8), w('claude', 8) + 0.1);
+  const icon = pop(t, w('reels', 8) - 0.1);
+  const mim = pop(t, w('mimic', 8));
+  const own = pop(t, w('own', 8 + 0) > w('mimic', 8) ? w('own', w('mimic', 8)) : w('own', 8));
+  const promptAt = K(9);
+  const fanOut = ease(t, reels - 0.1, reels + 0.15);
+  const COLORS = ['#E8574A', '#F08A3C', '#F4C343', '#8CC56A', '#4FB6C9', '#5679D1', '#9364C8'];
+  if (t >= promptAt) {
+    return (
+      <AbsoluteFill>
+        <Paper style={{height: 960}} />
+        <StepHeader n={3} title="Find your style" y={90} k={1} />
+        <div style={abs(540, 520, popStyle(pop(t, promptAt), 0.85))}>
+          <PromptCard t={t} t0={promptAt - 0.3} lines={['Learn the editing style from these videos:', '[LINK 1]  [LINK 2]  [LINK 3]', 'Study the cuts, captions and graphics.']} />
+        </div>
+      </AbsoluteFill>
+    );
+  }
+  return (
+    <AbsoluteFill>
+      <Paper style={{height: 960}} />
+      <StepHeader n={3} title="Find your style" y={90} k={ease(t, t0, t0 + 0.18)} />
+      {fanOut < 1 &&
+        COLORS.map((c, i) => (
+          <div
+            key={c}
+            style={{
+              position: 'absolute',
+              left: 540 - 40,
+              top: 640,
+              width: 80,
+              height: 330,
+              borderRadius: 14,
+              background: c,
+              border: '4px solid #fff',
+              transformOrigin: '50% 90%',
+              transform: `translateY(-100%) rotate(${(i - 3) * 16 * fan}deg)`,
+              boxShadow: '0 4px 10px rgba(0,0,0,0.15)',
+              opacity: Math.min(1, fan * 1.6) * (1 - fanOut),
+            }}
+          />
+        ))}
+      {[0, 1, 2].map((i) => {
+        const k = pop(t, reels + i * 0.12);
+        if (k <= 0) return null;
+        const x0 = 270 + i * 270;
+        const x = mix(x0, 830, fly);
+        const y = mix(470, 470, fly) - Math.sin(fly * Math.PI) * 120;
+        return (
+          <div key={i} style={abs(x, y, {...popStyle(k, 0.7), scale: `${mix(1, 0.25, fly)}`, opacity: fly >= 1 ? 0 : 1, rotate: `${(i - 1) * 5}deg`})}>
+            <ReelCard src={`assets/reel${i + 1}.mp4`} t0={reels} w={180} />
           </div>
         );
       })}
-      {label > 0 && (
-        <div style={abs(540, 470, {display: 'flex', alignItems: 'center', gap: 18, ...popStyle(label, 0.7)})}>
-          <Label text="These ones" size={58} />
-          <Check size={58} k={pop(t, white)} />
+      {t >= send - 0.05 && fly < 1 && <Label text="3-4 examples" color={C.terracotta} size={44} style={abs(540, 790, {opacity: ease(t, send, send + 0.2)})} />}
+      {icon > 0 && fly > 0 && (
+        <>
+          <div style={abs(830, 470, popStyle(icon))}>
+            <div style={{scale: `${1 + 0.1 * Math.sin(Math.min(1, Math.max(0, (t - w('claude', 8) - 0.1) / 0.25)) * Math.PI)}`}}>
+              <ClaudeIcon size={210} />
+            </div>
+          </div>
+          <Label text="Claude" size={44} style={abs(830, 640, {opacity: icon})} />
+        </>
+      )}
+      {mim > 0 && (
+        <div style={abs(330, 470, {textAlign: 'center', ...popStyle(mim, 0.7)})}>
+          <Label text="Mimic their style" size={48} />
+          <div style={{display: 'flex', justifyContent: 'center', marginTop: 16}}>
+            <Check size={56} k={mim} />
+          </div>
+          {own > 0 && <Label text="or create your own" color={C.terracotta} size={42} style={{marginTop: 22, opacity: Math.min(1, own * 1.6)}} />}
         </div>
       )}
-      <DottedPath
-        d="M 540 545 C 540 640, 540 700, 540 800"
-        p={arrow}
-        w={1080}
-        h={960}
-        dot={7}
-        arrow={{x: 540, y: 800, angle: 90}}
-      />
     </AbsoluteFill>
   );
 };
 
-// 20.2 s, face: the overlay sits right above his head, a checklist of the three rules.
-export const OverlayCard: React.FC<P> = ({t}) => {
-  const k = pop(t, at('overlays'), 220);
-  const hi = ease(t, at('like', 21), at('like', 21) + 0.2);
-  const tick = pop(t, at('head'));
-  if (k <= 0) return null;
-  const rows = ['Kill dead space', 'Plain white captions', 'Overlays above my head'];
+// Body 10 and 11, split: Step 4. A camera frame records on "film", the raw clips line up (cuts and all),
+// then drop into the Raw footage folder.
+export const FilmIt: React.FC<P> = ({t}) => {
+  const t0 = K(10);
+  const cam = pop(t, w('film', 10));
+  const raws = w('raw', 10);
+  const cuts = pop(t, w('cuts', 10));
+  const t1 = K(11);
+  const fold = pop(t, w('place', 11) - 0.1);
+  const drop = ease(t, w('footage', 11), w('footage', 11) + 0.45);
+  const tick = pop(t, w('subfolder', 11));
   return (
-    <div style={abs(540, 445, {width: 840, ...popStyle(k, 0.75)})}>
-      <Card>
-        <div style={{display: 'flex', alignItems: 'center', gap: 16, padding: '24px 30px', borderBottom: `1.5px solid ${C.cardLine}`}}>
-          <Starburst size={44} color={C.terracotta} />
-          <div style={{fontWeight: 800, fontSize: 40, letterSpacing: '-0.03em', color: C.ink}}>Claude's edit rules</div>
-        </div>
-        {rows.map((r, i) => (
-          <div
-            key={r}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 22,
-              padding: '20px 30px',
-              borderTop: i ? `1.5px solid ${C.cardLine}` : undefined,
-              background: i === 2 ? `rgba(203,96,62,${0.1 * hi})` : undefined,
-            }}
-          >
-            <div style={{fontWeight: 900, fontSize: 40, color: C.terracotta, width: 30}}>{i + 1}</div>
-            <div style={{flex: 1, fontWeight: 700, fontSize: 40, letterSpacing: '-0.03em', color: C.ink}}>{r}</div>
-            <Check size={46} k={i < 2 ? 1 : tick} />
+    <AbsoluteFill>
+      <Paper style={{height: 960}} />
+      <StepHeader n={4} title="Film and edit" y={90} k={ease(t, t0, t0 + 0.18)} />
+      {t < t1 && cam > 0 && (
+        <div style={abs(540, raws <= t ? 330 : 470, popStyle(cam, 0.7))}>
+          <div style={{width: 200, height: 300, borderRadius: 26, border: '6px solid #2A2522', background: '#3A3430', position: 'relative', boxShadow: '0 10px 24px rgba(0,0,0,0.2)'}}>
+            <div style={{position: 'absolute', top: 18, left: 18, display: 'flex', alignItems: 'center', gap: 8, fontFamily: FONT, fontWeight: 800, fontSize: 24, color: '#fff'}}>
+              <div style={{width: 18, height: 18, borderRadius: 9, background: '#E8574A', opacity: Math.floor(t * 2.5) % 2 ? 0.3 : 1}} />
+              REC
+            </div>
+            <div style={abs(100, 160, {width: 74, height: 74, borderRadius: 40, border: '6px solid rgba(255,255,255,0.8)'})} />
           </div>
-        ))}
+        </div>
+      )}
+      {t < t1 &&
+        [0, 1, 2].map((i) => {
+          const k = pop(t, raws + 0.1 + i * 0.1);
+          if (k <= 0) return null;
+          return (
+            <div key={i} style={abs(300 + i * 240, 640, popStyle(k, 0.7))}>
+              <ReelCard src={`assets/raw${i + 1}.jpg`} t0={0} w={110} style={{rotate: `${(i - 1) * 4}deg`}} />
+            </div>
+          );
+        })}
+      {t < t1 && cuts > 0 && <Label text="keep all the cuts" color={C.terracotta} size={44} style={abs(540, 820, popStyle(cuts, 0.7))} />}
+      {t >= t1 && (
+        <>
+          <div style={abs(540, 520, popStyle(fold, 0.7))}>
+            <Folder w={340} open={0.5}>
+              {[0, 1, 2].map((i) => (
+                <Img
+                  key={i}
+                  src={staticFile(`assets/raw${i + 1}.jpg`)}
+                  style={{position: 'absolute', left: 70 + i * 70, top: mix(-380, -30 + (i === 1 ? -14 : 0), drop), width: 90, height: 136, objectFit: 'cover', border: '4px solid #fff', borderRadius: 6, rotate: `${(i - 1) * 6}deg`, opacity: drop > 0 ? 1 : 0}}
+                />
+              ))}
+            </Folder>
+          </div>
+          <div style={abs(540, 735, {display: 'flex', alignItems: 'center', gap: 16, ...popStyle(fold, 0.7)})}>
+            <Label text="Raw footage" color={C.terracotta} size={50} />
+            <Check size={50} k={tick} />
+          </div>
+        </>
+      )}
+    </AbsoluteFill>
+  );
+};
+
+// Body 12, split: Step 4. The edit prompt sends, then cuts, captions and music line up on his words.
+const Item: React.FC<{k: number; label: string; children: React.ReactNode}> = ({k, label, children}) => (
+  <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 18, ...popStyle(k, 0.6)}}>
+    <div style={{width: 190, height: 190, borderRadius: 40, background: '#fff', boxShadow: '0 12px 28px rgba(40,30,20,0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>{children}</div>
+    <Label text={label} size={42} />
+  </div>
+);
+export const EditPrompt: React.FC<P> = ({t}) => {
+  const t0 = K(12);
+  const card = pop(t, w('prompt', 12) - 0.3, 220);
+  const send = w('entire', 12) + 0.1;
+  const items = [w('captions', 12), w('cuts', 12), w('music', 12)];
+  const out = ease(t, items[0] - 0.2, items[0]);
+  const all = pop(t, w('everything', 12));
+  return (
+    <AbsoluteFill>
+      <Paper style={{height: 960}} />
+      <StepHeader n={4} title="Film and edit" y={90} k={1} />
+      {out < 1 && card > 0 && (
+        <div style={abs(540, 510, {...popStyle(card, 0.8), opacity: Math.min(1, card * 1.6) * (1 - out)})}>
+          <PromptCard t={t} t0={t0} lines={['Edit my new video in the Raw footage folder.', 'Cut the pauses, add captions and music.', 'Show me a storyboard to review first.']} send={send} />
+        </div>
+      )}
+      {out > 0 && (
+        <div style={abs(540, 500, {display: 'flex', gap: 60})}>
+          <Item k={pop(t, items[0])} label="Captions">
+            <div style={{fontFamily: FONT, fontWeight: 900, fontSize: 64, color: C.ink, border: `7px solid ${C.ink}`, borderRadius: 18, padding: '0 14px', letterSpacing: '-0.04em'}}>CC</div>
+          </Item>
+          <Item k={pop(t, items[1])} label="Cuts">
+            <svg width={110} height={110} viewBox="0 0 24 24">
+              <circle cx={6} cy={6} r={3} stroke={C.terracotta} strokeWidth={2} fill="none" />
+              <circle cx={6} cy={18} r={3} stroke={C.terracotta} strokeWidth={2} fill="none" />
+              <path d="M8.5 7.5 L20 18 M8.5 16.5 L20 6" stroke={C.ink} strokeWidth={2} strokeLinecap="round" />
+            </svg>
+          </Item>
+          <Item k={pop(t, items[2])} label="Music">
+            <svg width={100} height={100} viewBox="0 0 24 24">
+              <path d="M9 18 V5 L20 3 V16" stroke={C.ink} strokeWidth={2.2} fill="none" strokeLinejoin="round" />
+              <circle cx={6.5} cy={18} r={2.6} fill={C.folderDeep} />
+              <circle cx={17.5} cy={16} r={2.6} fill={C.folderDeep} />
+            </svg>
+          </Item>
+        </div>
+      )}
+      {all > 0 && (
+        <div style={abs(540, 790, {display: 'flex', alignItems: 'center', gap: 16, ...popStyle(all, 0.7)})}>
+          <Check size={54} k={all} />
+          <Label text="Everything, done by Claude" size={46} />
+        </div>
+      )}
+    </AbsoluteFill>
+  );
+};
+
+// Body 13, face: a small chat above his head, his note and Claude's "Done."
+export const Adjust: React.FC<P> = ({t}) => {
+  const ask = pop(t, w('adjustment', 13) - 0.2, 220);
+  const done = pop(t, w('tell', 13), 220);
+  if (ask <= 0) return null;
+  return (
+    <div style={abs(540, 470, {width: 820, ...popStyle(ask, 0.8)})}>
+      <Card style={{padding: '22px 26px'}}>
+        <div style={{display: 'flex', justifyContent: 'flex-end'}}>
+          <div style={{background: '#EFEBE5', borderRadius: 18, padding: '12px 22px', fontWeight: 700, fontSize: 32, color: C.ink}}>Make the captions bigger</div>
+        </div>
+        {done > 0 && (
+          <div style={{display: 'flex', alignItems: 'center', gap: 14, marginTop: 18, opacity: Math.min(1, done * 1.6)}}>
+            <Starburst size={36} color={C.terracotta} />
+            <div style={{fontWeight: 700, fontSize: 32, color: C.ink}}>Done. Captions are bigger now.</div>
+          </div>
+        )}
       </Card>
     </div>
   );
 };
 
-// 22.8 s, split: a ring fills around Claude's mark while the minutes count up to 15.
-export const Minutes: React.FC<P> = ({t}) => {
-  const t0 = 22.8333;
-  const k = pop(t, t0 + 0.05);
-  const fill = ease(t, at('took'), at('minutes') + 0.1);
-  const n = Math.round(interpolate(t, [at('claude', 24), at('15') + 0.25], [0, 15], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'}));
-  const num = pop(t, at('claude', 24));
-  const r = 160;
-  const L = 2 * Math.PI * r;
-  return (
-    <AbsoluteFill>
-      <Paper style={{height: 960}} />
-      <div style={abs(540, 370, popStyle(k, 0.7))}>
-        <div style={{position: 'relative', width: 400, height: 400}}>
-          <div style={{position: 'absolute', inset: 34, borderRadius: '50%', background: 'rgba(255,255,255,0.35)', boxShadow: 'inset 0 0 0 2px rgba(203,96,62,0.15)'}} />
-          <svg width={400} height={400} style={{position: 'absolute', inset: 0, rotate: '-90deg'}}>
-            <circle cx={200} cy={200} r={r} stroke="rgba(75,66,58,0.12)" strokeWidth={22} fill="none" />
-            <circle cx={200} cy={200} r={r} stroke={C.terracotta} strokeWidth={22} fill="none" strokeLinecap="round" strokeDasharray={L} strokeDashoffset={L * (1 - fill)} />
-          </svg>
-          <div style={abs(200, 200)}>
-            <Starburst size={170} color={C.terracotta} spin={(t - t0) * 45} />
-          </div>
-        </div>
-      </div>
-      <div style={abs(540, 690, {display: 'flex', alignItems: 'baseline', gap: 18, ...popStyle(num, 0.7)})}>
-        <span style={{fontFamily: FONT, fontWeight: 900, fontSize: 130, letterSpacing: '-0.05em', color: C.terracotta}}>{n}</span>
-        <span style={{fontFamily: FONT, fontWeight: 800, fontSize: 76, letterSpacing: '-0.04em', color: C.ink}}>minutes</span>
-      </div>
-    </AbsoluteFill>
-  );
-};
-
-// 27.9 s, full paper: his recap. The editor folder in the middle, the steps pointing in, then FREE.
+// Body 14 and 15, full paper: the recap. The AI Video Editor folder in the middle, the four steps point in.
 export const Recap: React.FC<P> = ({t}) => {
-  const t0 = 27.8667;
+  const t0 = K(14);
   const solid = ease(t, t0 + 0.05, t0 + 0.25);
-  const stamp = pop(t, at('free'), 260);
+  const reel = pop(t, w('reel', 14), 240);
   const corners = [
-    {x: 260, y: 400, n: 'Step 1.', s: 'Kill dead space', d: 'M 280 470 C 300 560, 340 620, 405 668', a: {x: 405, y: 668, angle: 40}},
-    {x: 820, y: 400, n: 'Step 2.', s: 'White captions', d: 'M 800 470 C 780 560, 740 620, 675 668', a: {x: 675, y: 668, angle: 140}},
-    {x: 260, y: 1150, n: 'Step 3.', s: 'Overlays', d: 'M 280 1085 C 300 1010, 330 960, 385 930', a: {x: 385, y: 930, angle: -35}},
-    {x: 820, y: 1150, n: 'Done in', s: '15 minutes', d: 'M 800 1085 C 780 1010, 750 960, 695 930', a: {x: 695, y: 930, angle: -145}},
+    {x: 260, y: 470, n: 'Step 1.', s: 'Set it up', d: 'M 280 540 C 300 610, 340 660, 405 698', a: {x: 405, y: 698, angle: 40}},
+    {x: 820, y: 470, n: 'Step 2.', s: 'Install the tools', d: 'M 800 540 C 780 610, 740 660, 675 698', a: {x: 675, y: 698, angle: 140}},
+    {x: 260, y: 1150, n: 'Step 3.', s: 'Find your style', d: 'M 280 1085 C 300 1010, 330 960, 385 930', a: {x: 385, y: 930, angle: -35}},
+    {x: 820, y: 1150, n: 'Step 4.', s: 'Film and edit', d: 'M 800 1085 C 780 1010, 750 960, 695 930', a: {x: 695, y: 930, angle: -145}},
   ];
   return (
     <AbsoluteFill>
       <Paper />
-      <div style={abs(540, 800)}>
-        <Folder w={340} solid={solid} />
+      <div style={abs(540, 810)}>
+        <Folder w={320} solid={solid} />
       </div>
-      <Label text="My Claude editor" size={50} style={abs(540, 990, {opacity: solid})} />
+      <Label text="AI Video Editor" size={46} style={abs(540, 985, {opacity: solid})} />
       {corners.map((c, i) => {
-        const t1 = t0 + 0.12 + i * 0.22;
+        const t1 = t0 + 0.12 + i * 0.25;
         const k = pop(t, t1);
         return (
           <React.Fragment key={i}>
             <div style={abs(c.x, c.y, {textAlign: 'center', ...popStyle(k, 0.7)})}>
-              <Label text={c.n} color={C.terracotta} size={50} />
-              <Label text={c.s} size={54} />
+              <Label text={c.n} color={C.terracotta} size={46} />
+              <Label text={c.s} size={48} />
             </div>
             <DottedPath d={c.d} p={ease(t, t1 + 0.08, t1 + 0.4)} w={1080} h={1920} dot={6} arrow={c.a} />
           </React.Fragment>
         );
       })}
+      {reel > 0 && (
+        <div style={abs(540, 790, {...popStyle(reel, 0.5), rotate: '-4deg'})}>
+          <ReelCard src="assets/reel1.mp4" t0={w('reel', 14)} w={190} />
+        </div>
+      )}
+    </AbsoluteFill>
+  );
+};
+
+// Body 16, split: his own workflow folder, FREE stamped on "free", a reel of his on "like this".
+export const Workflow: React.FC<P> = ({t}) => {
+  const t0 = K(16);
+  const fold = pop(t, w('workflow', 16) - 0.3);
+  const stamp = pop(t, w('free', 16), 260);
+  const reel = pop(t, w('videos', 16));
+  return (
+    <AbsoluteFill>
+      <Paper style={{height: 960}} />
+      <div style={abs(reel > 0 ? 360 : 540, 450, popStyle(fold, 0.7))}>
+        <Folder w={300} />
+      </div>
+      <Label text="My editing workflow" size={46} style={abs(reel > 0 ? 360 : 540, 640, {opacity: Math.min(1, fold * 1.5)})} />
       {stamp > 0 && (
         <div
-          style={abs(540, 790, {
-            padding: '10px 44px',
-            borderRadius: 22,
+          style={abs(reel > 0 ? 360 : 540, 440, {
+            padding: '8px 36px',
+            borderRadius: 20,
             background: C.terracotta,
             color: '#fff',
             fontFamily: FONT,
             fontWeight: 900,
-            fontSize: 110,
+            fontSize: 90,
             letterSpacing: '-0.03em',
             border: '6px solid #fff',
             boxShadow: '0 14px 30px rgba(120,50,20,0.35)',
@@ -521,22 +682,27 @@ export const Recap: React.FC<P> = ({t}) => {
           FREE
         </div>
       )}
+      {reel > 0 && (
+        <div style={abs(790, 470, {...popStyle(reel, 0.6), rotate: '4deg'})}>
+          <ReelCard src="assets/reel2.mp4" t0={w('videos', 16)} w={220} />
+        </div>
+      )}
     </AbsoluteFill>
   );
 };
 
-// 31.5 s, face: his CTA. A white search pill types the comment word, the arrow button turns dark.
+// Body 17, face: his CTA. A white pill types MOTION, the arrow button goes dark.
 export const Cta: React.FC<P> = ({t}) => {
-  const word = 'EDIT';
-  const t0 = at('edit', 31);
-  const k = pop(t, 31.6, 220);
+  const word = 'MOTION';
+  const t0 = w('motion', 17);
+  const k = pop(t, K(17) + 0.1, 220);
   const typed = Math.max(0, Math.min(word.length, Math.floor((t - t0) / 0.07) + 1));
   const done = t >= t0 + word.length * 0.07 + 0.08;
   const caret = !done && Math.floor(t * 4) % 2 === 0;
   if (k <= 0) return null;
   return (
     <div
-      style={abs(540, 380, {
+      style={abs(540, 470, {
         width: 830,
         height: 116,
         borderRadius: 58,
@@ -563,7 +729,7 @@ export const Cta: React.FC<P> = ({t}) => {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          scale: done ? `${mix(1.15, 1, ease(t, t0 + 0.36, t0 + 0.55))}` : '1',
+          scale: done ? `${mix(1.15, 1, ease(t, t0 + 0.5, t0 + 0.7))}` : '1',
         }}
       >
         <svg width={38} height={38} viewBox="0 0 24 24">
@@ -575,55 +741,80 @@ export const Cta: React.FC<P> = ({t}) => {
 };
 
 // Names that keep their capital in the lowercase captions.
-export const NAMES = ['Claude', 'Code'];
+export const NAMES = ['Claude', 'Code', 'AI', 'Video', 'Editor'];
 
-// His three layouts with hard cuts, one per sentence or so, each starting where a take starts.
+// Hard cuts between his three layouts, each at the start of a take.
 export const SCENES: Scene[] = [
-  {from: 0, to: 5.3, layout: 'face', Graphic: Hook},
-  {from: 5.3, to: 7.1333, layout: 'full', captionY: 0.64, Graphic: RawFootage},
-  {from: 7.1333, to: 9.9667, layout: 'split', Graphic: Install},
-  {from: 9.9667, to: 13.1, layout: 'split', Graphic: ThreeRules},
-  {from: 13.1, to: 16.2667, layout: 'split', Graphic: DeadSpace},
-  {from: 16.2667, to: 20.2, layout: 'split', Graphic: PlainCaptions},
-  {from: 20.2, to: 22.8333, layout: 'face', Graphic: OverlayCard},
-  {from: 22.8333, to: 25.6667, layout: 'split', Graphic: Minutes},
-  {from: 25.6667, to: 27.8667, layout: 'face'},
-  {from: 27.8667, to: 31.5333, layout: 'full', captionY: 0.7, Graphic: Recap},
-  {from: 31.5333, to: 99, layout: 'face', Graphic: Cta},
+  {from: 0, to: K(0), layout: 'face', Graphic: Hook},
+  {from: K(0), to: K(1), layout: 'split', Graphic: DesktopApp},
+  {from: K(1), to: K(2), layout: 'full', captionY: 0.68, Graphic: CreateFolder},
+  {from: K(2), to: K(5), layout: 'split', Graphic: Subfolders},
+  {from: K(5), to: K(6), layout: 'full', captionY: 0.73, Graphic: ClaudeChat},
+  {from: K(6), to: K(8), layout: 'split', Graphic: InstallTools},
+  {from: K(8), to: K(10), layout: 'split', Graphic: FindStyle},
+  {from: K(10), to: K(12), layout: 'split', Graphic: FilmIt},
+  {from: K(12), to: K(13), layout: 'split', Graphic: EditPrompt},
+  {from: K(13), to: K(14), layout: 'face', Graphic: Adjust},
+  {from: K(14), to: K(16), layout: 'full', captionY: 0.73, Graphic: Recap},
+  {from: K(16), to: K(17), layout: 'split', Graphic: Workflow},
+  {from: K(17), to: 999, layout: 'face', Graphic: Cta},
 ];
 
+const hookCards = H1 ? [0.02, at('editing'), at('videos')] : [0.02, at('build'), at('editor')];
 // Soft pops on graphics, a light whoosh into full-paper scenes, key clicks on the typed CTA. No music.
 export const SFX: Sfx[] = [
-  ['pop_light_3005', 0.02, 0.3],
-  ['pop_light_3005', at('edited'), 0.3],
-  ['pop_light_3005', at('video'), 0.3],
-  ['whoosh_fast_1490', 5.27, 0.3],
-  ['pop_light_3005', 5.55, 0.3],
-  ['pop_light_3005', at('send') + 0.16, 0.35],
-  ['pop_dry_2356', at('raw') + 0.42, 0.35],
-  ['whoosh_air_1489', 7.1, 0.18],
-  ['pop_light_3005', at('claude', 8), 0.35],
-  ['pop_dry_2356', at('installed') + 0.55, 0.4],
-  ['pop_light_3005', at('three', 10), 0.3],
-  ['pop_light_3005', at('three', 10) + 0.2, 0.3],
-  ['pop_light_3005', 13.25, 0.3],
-  ['whoosh_fast_1490', at('dead') - 0.05, 0.25],
-  ['pop_light_3005', at('caption'), 0.3],
-  ['pop_hard_click_2364', at('plain'), 0.25],
-  ['pop_dry_2356', at('white'), 0.35],
-  ['whoosh_air_1489', 20.17, 0.18],
-  ['pop_light_3005', at('overlays'), 0.35],
-  ['pop_dry_2356', at('head'), 0.35],
-  ['pop_light_3005', 22.88, 0.3],
-  ['lab_ding', at('15') + 0.25, 0.22],
-  ['whoosh_fast_1490', 27.84, 0.3],
-  ['pop_light_3005', 28.0, 0.25],
-  ['pop_light_3005', 28.44, 0.25],
-  ['pop_dry_2356', at('free'), 0.55],
-  ['pop_light_3005', 31.6, 0.3],
-  ['pop_hard_click_2364', at('edit', 31), 0.22],
-  ['pop_hard_click_2364', at('edit', 31) + 0.07, 0.22],
-  ['pop_hard_click_2364', at('edit', 31) + 0.14, 0.22],
-  ['pop_hard_click_2364', at('edit', 31) + 0.21, 0.22],
-  ['pop_dry_2356', at('edit', 31) + 0.36, 0.3],
+  ...hookCards.map((s): Sfx => ['pop_light_3005', s, 0.3]),
+  ['whoosh_air_1489', K(0) - 0.03, 0.18],
+  ['pop_light_3005', w('claude', 0), 0.35],
+  ['pop_light_3005', w('browser', 0), 0.3],
+  ['pop_hard_click_2364', w('version', 0), 0.25],
+  ['pop_dry_2356', w('version', 0) + 0.2, 0.35],
+  ['whoosh_fast_1490', K(1) - 0.03, 0.3],
+  ['pop_light_3005', w('folder', 1) - 0.1, 0.3],
+  ['pop_dry_2356', w('called', 1) + 0.15, 0.35],
+  ['whoosh_air_1489', K(2) - 0.03, 0.18],
+  ['pop_light_3005', w('subfolders', 2), 0.3],
+  ['pop_light_3005', w('raw', 3), 0.3],
+  ['pop_light_3005', w('references', 3), 0.3],
+  ['pop_light_3005', w('exports', 3), 0.3],
+  ['whoosh_fast_1490', K(5) - 0.03, 0.3],
+  ['pop_light_3005', K(5) + 0.05, 0.3],
+  ['pop_hard_click_2364', w('select', 5), 0.25],
+  ['pop_dry_2356', w('local', 5) + 0.15, 0.35],
+  ['pop_light_3005', w('point', 5), 0.3],
+  ['pop_light_3005', w('folder', 5) - 0.15, 0.3],
+  ['whoosh_air_1489', K(6) - 0.03, 0.18],
+  ['pop_light_3005', w('links', 6) - 0.05, 0.3],
+  ['pop_light_3005', K(7), 0.25],
+  ['pop_hard_click_2364', w('prompt', 7) + 0.1, 0.3],
+  ['pop_light_3005', w('style', 8), 0.3],
+  ['pop_light_3005', w('copy', 8), 0.3],
+  ['whoosh_fast_1490', w('examples', 8), 0.22],
+  ['pop_dry_2356', w('claude', 8) + 0.1, 0.35],
+  ['pop_dry_2356', w('mimic', 8), 0.3],
+  ['pop_light_3005', K(9), 0.25],
+  ['pop_light_3005', w('film', 10), 0.3],
+  ['pop_light_3005', w('raw', 10) + 0.1, 0.25],
+  ['pop_dry_2356', w('cuts', 10), 0.3],
+  ['pop_light_3005', w('place', 11) - 0.1, 0.3],
+  ['pop_dry_2356', w('footage', 11) + 0.45, 0.35],
+  ['pop_light_3005', w('prompt', 12) - 0.3, 0.3],
+  ['pop_hard_click_2364', w('entire', 12) + 0.1, 0.3],
+  ['pop_light_3005', w('captions', 12), 0.3],
+  ['pop_light_3005', w('cuts', 12), 0.3],
+  ['pop_light_3005', w('music', 12), 0.3],
+  ['lab_ding', w('everything', 12), 0.2],
+  ['pop_light_3005', w('adjustment', 13) - 0.2, 0.3],
+  ['pop_dry_2356', w('tell', 13), 0.3],
+  ['whoosh_fast_1490', K(14) - 0.03, 0.3],
+  ['pop_light_3005', K(14) + 0.12, 0.25],
+  ['pop_light_3005', K(14) + 0.62, 0.25],
+  ['pop_dry_2356', w('reel', 14), 0.35],
+  ['whoosh_air_1489', K(16) - 0.03, 0.18],
+  ['pop_light_3005', w('workflow', 16) - 0.3, 0.3],
+  ['pop_dry_2356', w('free', 16), 0.55],
+  ['pop_light_3005', w('videos', 16), 0.3],
+  ['pop_light_3005', K(17) + 0.1, 0.3],
+  ...[0, 1, 2, 3, 4, 5].map((i): Sfx => ['pop_hard_click_2364', w('motion', 17) + i * 0.07, 0.22]),
+  ['pop_dry_2356', w('motion', 17) + 0.5, 0.3],
 ];
