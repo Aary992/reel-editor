@@ -1,4 +1,4 @@
-// THIS REEL: "ai editor h1" (10-25 takes, two spoken hooks x two cover titles = four reels, 10-26). The body is the
+// THIS REEL: "ai editor h2" (10-25 takes, two spoken hooks x two cover titles = four reels, 10-26). The body is the
 // same take in both cuts, so every body time is relative to K(i), the start of body clip i; only the hook
 // differs (NAME). COVER picks the title. Rewrite this file for every new reel; keep finished ones in examples/.
 import React from 'react';
@@ -8,7 +8,7 @@ import {C, FONT, ease, mix, pop} from './style';
 import {CLIPS, FPS, NAME, at} from './data';
 import type {Scene, Sfx} from './data';
 
-const COVER: 1 | 2 = 1;
+const COVER: 1 | 2 = 2;
 const TITLE = COVER === 1 ? ['Everything you need to know', 'about editing with AI'] : ['Build your own', 'AI editor for free'];
 const H1 = NAME === 'ai editor h1';
 
