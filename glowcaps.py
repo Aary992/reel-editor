@@ -58,29 +58,65 @@ def _width(text):
     return sum(f.getlength(c) for c in text) + SIZE * TRACK * (len(text) - 1)
 
 
+# a line should not end on one of these ("THIS ENTIRE VIDEO WAS" / "EDITED WITH...")
+WEAK = set("a an the to of for with by in on at into from as and but or so if is was are be been i i'm "
+           "you we they he she it my your our their his her this that these those will have has had do "
+           "not all every very just own can could would".split())
+
+
+def _cost(seg, space):
+    n = len(seg)
+    if n > MAX_WORDS or sum(_width(x["text"]) for x in seg) + space * (n - 1) > MAX_W:
+        return None
+    c = {1: 6.0, 2: 1.0, 3: 0.0, 4: 0.0, 5: 1.5}[n]
+    if seg[-1]["t"].strip().rstrip(".,!?;:").lower() in WEAK:
+        c += 3.0
+    return c
+
+
+def _split(seg, space):
+    """The cheapest way to cut one sentence into lines (dynamic programming over the break points)."""
+    best = [0.0] + [None] * len(seg)
+    back = [0] * (len(seg) + 1)
+    for j in range(1, len(seg) + 1):
+        for i in range(max(0, j - MAX_WORDS), j):
+            c = _cost(seg[i:j], space)
+            if c is None or best[i] is None:
+                continue
+            if len(seg) == 1:
+                c = 0.0
+            if best[j] is None or best[i] + c < best[j]:
+                best[j], back[j] = best[i] + c, i
+    cuts, j = [], len(seg)
+    while j > 0:
+        cuts.append((back[j], j))
+        j = back[j]
+    return [seg[i:j] for i, j in reversed(cuts)]
+
+
 def lines_of(words):
-    """[[word, ...], ...]: phrases of 2-5 words, broken at punctuation, pauses and MAX_W."""
+    """[[word, ...], ...]: phrases of 2-5 words. A sentence ends at punctuation or a pause; inside one, the
+    breaks avoid one-word orphans and lines ending on a weak word."""
     space = _font().getlength(" ")
     items = [dict(w, text=_text(w)) for w in words if _text(w)]
-    lines, cur = [], []
-    for i, w in enumerate(items):
-        if cur:
-            width = sum(_width(x["text"]) for x in cur) + space * len(cur) + _width(w["text"])
-            if len(cur) >= MAX_WORDS or width > MAX_W or w["s"] - cur[-1]["e"] > PAUSE:
-                lines.append(cur)
-                cur = []
+    sentences, cur = [], []
+    for w in items:
+        if cur and w["s"] - cur[-1]["e"] > PAUSE:
+            sentences.append(cur)
+            cur = []
         cur.append(w)
         if re.search(r"[.,!?;:]$", w["t"].strip()):
-            lines.append(cur)
+            sentences.append(cur)
             cur = []
     if cur:
-        lines.append(cur)
-    # no one-word orphans: fold into a neighbour when it fits, else balance a split with the neighbour
-    def fits(ws):
-        return len(ws) <= MAX_WORDS and sum(_width(x["text"]) for x in ws) + space * (len(ws) - 1) <= MAX_W
+        sentences.append(cur)
+    lines = []
+    for seg in sentences:
+        lines += _split(seg, space)
+    # a one-word sentence joins its neighbour when the two fit on one line
     out = []
     for ln in lines:
-        if out and (len(ln) == 1 or len(out[-1]) == 1) and fits(out[-1] + ln):
+        if out and (len(ln) == 1 or len(out[-1]) == 1) and _cost(out[-1] + ln, space) is not None:
             out[-1] = out[-1] + ln
         else:
             out.append(ln)
