@@ -711,6 +711,8 @@ def main():
     ap.add_argument("--emoji", default="")
     ap.add_argument("--music", default="", help="story look: a music bed, 25%% under the hook then 10%%")
     ap.add_argument("--zones", action="store_true", help="draw the safe-zone map on every frame (layout check)")
+    ap.add_argument("--captions", default="", choices=["", "glow"],
+                    help="caption style: the look's own (default) or glow (glowcaps.py, SF Pro word-by-word)")
     a = ap.parse_args()
     reel = Path(a.reel) if Path(a.reel).is_absolute() else ROOT / a.reel
     if not a.look:
@@ -726,6 +728,10 @@ def main():
     video = json.loads((reel / "source.json").read_text())["video"]
     words = tr.tidy_words(json.loads((reel / "words.json").read_text(encoding="utf-8"))["words"])
     wins = caption_windows(tr.chunk(words), L)
+    glow = None
+    if a.captions == "glow":
+        import glowcaps
+        print("  captions: glow (SF Pro, one line in the middle, words fade in)")
     sections = tr.load_sections(reel / "sections.json")
     fps = tr.probe(ff, video, "v:0", "r_frame_rate")
     num, den = (fps.split("/") + ["1"])[:2]
@@ -781,12 +787,15 @@ def main():
             edits.append({**e, "t": round(t_snap, 4), "path": path.resolve(), "dur": d, "clip_dur": clip_dur})
             print(f"  visual: {e['file']:8} at {e['t']:.2f}-{e['end']:.2f}s (fitted x{d / clip_dur:.3f})")
     hidden = [(c["t"], c["end"]) for c in tcuts + flow]
+    if a.captions == "glow":
+        glow = glowcaps.plan(words, dur)
     trans_cuts = [c for c in scene if not any(x - 0.2 <= c <= y + 0.2 for x, y in hidden)]
     keys = fx.plan_zoom(sections, scene, words) if L.get("zoom") else []
     SP = None
     if L.get("story"):
         import story
-        SP = story.plan(reel, words, dur, fps_f, ff, scene, video, log=print, music=a.music)
+        SP = story.plan(reel, words, dur, fps_f, ff, scene, video, log=print, music=a.music,
+                        lift=0.0 if a.captions == "glow" else None)
         if SP["transition"]:
             # his calls 10-22: a small transition where one take hands over to the next (the cut's own joins,
             # which the shot detector misses when the framing barely changes), softened by a short dissolve
@@ -912,6 +921,9 @@ def main():
             img = text_cut_frame(cut, t, img, L["textcut"])
         if SP:
             img = story.draw_overlays(img, t, SP)
+        if glow is not None:
+            img = glowcaps.draw(img, t, glow, hidden)
+        elif SP:
             img = story.draw_captions(img, t, wins, SP, hidden, words)
         else:
             img = draw_captions(img, t, wins, L, hidden)

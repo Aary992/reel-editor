@@ -32,6 +32,7 @@ py -3.14 reel.py visual "short name" --drop V1
 py -3.14 reel.py status "short name"
 py -3.14 reel.py map "short name" "<flow file>.mp4" T2
 py -3.14 reel.py render "short name"
+py -3.14 reel.py render "short name" --captions glow   # optional caption style (STYLE.md), ask him
 py -3.14 reel.py preview "short name"
 py -3.14 reel.py split "short name"
 py -3.14 paper\paper.py prep "short name" ["C:\path\to\edited video.mp4"]
@@ -55,6 +56,7 @@ Claude runs it in the background.
 | `render.py` | The renderer for both looks (and the 10-17 style tests in `LOOKS`). |
 | `storycut.py` | `reel.py cut`: dead space and mistakes out of raw takes, no script needed. |
 | `story.py`, `overlays.py`, `face.py` | The story look: captions, punch-ins, sound; the app UI overlays; where his face is in the frame. |
+| `glowcaps.py` | Glow captions, an optional caption style (`--captions glow`): SF Pro, one line in the middle, words fade in. |
 | `moments.py` | Picks the motion text moments and writes their Flow prompts. |
 | `talk_reel.py`, `fx.py`, `cuts.py`, `sections.py`, `transcribe.py` | Building blocks: captions, zoom, Flow clip timing, shot detection, transcript. |
 | `lab\compare.py` | Side-by-side of look tests, for when he wants to compare styles again. |

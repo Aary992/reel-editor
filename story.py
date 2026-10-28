@@ -118,8 +118,10 @@ def zoomed(f, z, anchor_y):
     return g
 
 
-def plan(reel, words, dur, fps, ff, scene, video, log=print, music=""):
+def plan(reel, words, dur, fps, ff, scene, video, log=print, music="", lift=None):
     opts = load_json(reel / "story.json", {})
+    if lift is not None:     # glow captions sit in the middle: no room to make under his chin
+        opts["lift"] = lift
     pcs = pieces_of(reel, video, dur, fps, ff, scene)
     # the lift: enough that the lowest-framed take's captions still fit under his chin (or story.json's)
     chins = sorted(f["chin"] for _, _, _, f in pcs if f and f["chin"] < 0.9)

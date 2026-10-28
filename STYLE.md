@@ -110,6 +110,26 @@ seven; app UI overlays (code-drawn) where v2 had none; punch-ins on cuts where v
 "never a punch-in"; a smaller light leak, only where takes change (hard cuts until 10-22); a music bed under
 every reel from 10-20 until 10-25 (none since). No B-roll, no cover, no caption pack: unchanged.
 
+# Glow captions (an option, APPROVED 2026-10-29)
+A caption style he can pick for any story or v2 reel, `--captions glow` on `reel.py preview` and `render`.
+**Never the default and never the only one** (his call 10-29: "one of the subtitle styles we offer, but it
+shouldn't be the only one"), so ask which captions he wants, like the look. Code: `glowcaps.py`. Built with
+him trial by trial from a creator reel (Video-6133) on the "oct 24" cut:
+- **Font:** SF Pro Display Bold (the iPhone font), white caps, 50 px on a 1080-wide frame. That font only:
+  no script word, no colour, no box. A soft dark shadow only. SF Pro is Apple's: installed on his machines,
+  never committed.
+- **Place:** one line at a time, fixed in the middle (50% down), centred, inside 720 px. With these the story
+  look skips its lift (that room was only for captions under his chin), so the line sits on his hair line as
+  in the approved trial.
+- **Words:** each fades in on the exact spoken word: soft focus (3 px blur clearing over 0.35 s) and a faint
+  white glow that swells and settles. The line is laid out once and nothing slides as words join.
+- **Lines:** 2 to 5 words, broken at punctuation and pauses; inside a sentence the breaks avoid one-word
+  orphans and lines ending on a weak word ("THIS ENTIRE VIDEO WAS"). The next line takes over the moment its
+  first word is said: no blank gap.
+- **Tried and rejected on the way:** two stacked lines (small over big), an italic serif for feeling words,
+  coloured key words, bigger type, a 6% shrink + 16 px blur pop-in ("too dramatic"), re-centring the line as
+  words join ("looks like a typewriter").
+
 # The v2 look (LOCKED 2026-10-18)
 
 He picked this from six side-by-side options on recording 55 and signed it off with the finished Reel.

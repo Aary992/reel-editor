@@ -445,13 +445,15 @@ def render(reel, cfg, out, a=None):
         cmd += ["--seconds", str(a.seconds)]
     if a is not None and getattr(a, "zones", False):
         cmd += ["--zones"]
+    if a is not None and getattr(a, "captions", ""):
+        cmd += ["--captions", a.captions]
     if a is not None and getattr(a, "text", ""):
         cmd += ["--text", a.text, "--text-start", str(a.text_start), "--text-secs", str(a.text_secs)]
         if a.emoji:
             cmd += ["--emoji", a.emoji]
     log = run(cmd, quiet=True)
     print("\n".join("    " + ln.strip() for ln in log.splitlines()
-                    if re.search(r"look:|leak|cut:|visual:|accent:|text:|story:|overlay |sfx:|music:|wrote", ln)))
+                    if re.search(r"look:|captions:|leak|cut:|visual:|accent:|text:|story:|overlay |sfx:|music:|wrote", ln)))
 
 
 def check(cfg, src, out):
@@ -536,10 +538,14 @@ def main():
     p.add_argument("name")
     p = sub.add_parser("preview")
     p.add_argument("name")
+    p.add_argument("--captions", default="", choices=["", "glow"],
+                   help="caption style: the look's own (default) or glow; ASK HIM which, never assume")
     p.add_argument("--seconds", type=float, default=0, help="only the first N seconds")
     p.add_argument("--zones", action="store_true", help="draw the safe-zone map (layout check)")
     p = sub.add_parser("render")
     p.add_argument("name")
+    p.add_argument("--captions", default="", choices=["", "glow"],
+                   help="caption style: the look's own (default) or glow; ASK HIM which, never assume")
     p.add_argument("--text", default="")
     p.add_argument("--text-start", type=float, default=0.0)
     p.add_argument("--text-secs", type=float, default=3.0)

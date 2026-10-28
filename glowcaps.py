@@ -68,7 +68,7 @@ def _cost(seg, space):
     n = len(seg)
     if n > MAX_WORDS or sum(_width(x["text"]) for x in seg) + space * (n - 1) > MAX_W:
         return None
-    c = {1: 6.0, 2: 1.0, 3: 0.0, 4: 0.0, 5: 1.5}[n]
+    c = {1: 6.0, 2: 1.5, 3: 0.0, 4: 0.0, 5: 0.8}[n]
     if seg[-1]["t"].strip().rstrip(".,!?;:").lower() in WEAK:
         c += 3.0
     return c

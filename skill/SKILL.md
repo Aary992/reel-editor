@@ -44,6 +44,10 @@ with every ask, so he can gather it all at once. Build only after he answers; th
   real the beats should show (screenshots, his earlier reels), then follow **Paper look** below. For studio,
   skip motion text, hook line and images: ask only for anything real the graphics should show (screenshots,
   a document, a chart), then follow **Studio look** below.
+- **Captions** (story, v2): "Which captions: the look's own, or glow?" Glow (approved 10-29) is SF Pro white
+  caps, one line fixed in the middle, each word fading in softly with a faint glow (STYLE.md, `glowcaps.py`).
+  It is one option, never the default; never reuse the last answer. If glow, add `--captions glow` to every
+  `reel.py preview` and `render` of that reel.
 - **Motion text** (story, v2): "Do you want motion graphic text in this video?" Never assume, never reuse the last
   answer. Prep refuses to run without it. If he wants one of each, make two reels from the one cut: copy
   `cut.mp4`, `cut.json`, `words.json` and `fixes.json` into `reels\<name> motion\` and prep that copy's
@@ -179,5 +183,6 @@ picks the best take per script line and assembles one video, which then goes thr
   distracting"; story reels had a bed from 10-20 to 10-24). Only if he asks for music on one reel, name the
   track in its `story.json`.
 - Ask which look (story, paper, studio or v2) before every reel.
+- For story and v2, ask which captions too (the look's own or glow); glow is an option, never the default.
 - Don't post, commit or push anything without his yes.
 - Report honestly what was checked and what wasn't. Sound is checked by measurement only.
