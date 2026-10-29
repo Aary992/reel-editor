@@ -97,7 +97,7 @@ const Month: React.FC<{t: number}> = ({t}) => {
 };
 
 const Data: React.FC<{t: number}> = ({t}) => (
-  <Counter t={t} t0={at('backed')} from={at('over', 13)} land={at('impressions')} value={100_000_000} label="impressions" plus />
+  <Counter t={t} t0={at('backed')} from={at('backed') + 0.2} land={at('impressions')} value={100_000_000} label="impressions" plus />
 );
 
 const Post: React.FC<{t: number}> = ({t}) => {

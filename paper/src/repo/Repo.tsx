@@ -6,8 +6,8 @@ import {HOOK, SCENES, SFX} from './beats';
 import {DURATION, FPS, WORDS, clipAt} from './data';
 import {C, PIXEL, SANS, SEAM, pop} from './style';
 
-const FACE_SCALE = 1.1;
-const HAIR_Y = SEAM + 120; // his hair sits this far down the frame, under the caption
+const FACE_SCALE = 1.0;
+const HAIR_Y = SEAM + 95; // his hair sits this far down the frame, under the caption
 
 const sceneAt = (t: number) => {
   let i = 0;

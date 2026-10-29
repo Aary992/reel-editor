@@ -282,6 +282,7 @@ export const Counter: React.FC<{t: number; t0: number; from: number; land: numbe
           textAlign: 'center',
           fontFamily: SANS,
           whiteSpace: 'nowrap',
+          minWidth: 780,
         }}
       >
         <div style={{fontWeight: 800, fontSize: 112, letterSpacing: '-0.045em', color: C.ink, lineHeight: 1}}>
