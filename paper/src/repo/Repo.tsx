@@ -68,7 +68,6 @@ const Face: React.FC<{t: number}> = ({t}) => {
 
 const Card: React.FC<{t: number}> = ({t}) => {
   const sc = sceneAt(t);
-  const first = SCENES.find((s) => s.Card === sc.Card && !s.pop && s.from < sc.from) ? sc.from : sc.from;
   const k = sc.pop === false ? 1 : Math.min(1.2, pop(t, sc.from));
   return (
     <div
