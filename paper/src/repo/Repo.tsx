@@ -79,7 +79,7 @@ const Card: React.FC<{t: number}> = ({t}) => {
         transformOrigin: `540px ${SEAM / 2}px`,
       }}
     >
-      <sc.Card t={t} t0={first} />
+      <sc.Card t={t} t0={sc.from} />
     </div>
   );
 };
